@@ -13,4 +13,4 @@ cvxpy
 openpyxl 
 lseg-data 
 pyarrow 
-pandas_market_calendars
+pandas-market-calendars
