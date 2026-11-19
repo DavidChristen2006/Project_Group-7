@@ -1,0 +1,17 @@
+# Virtual environments (each person creates their own)
+.venv/
+.venv*/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# macOS / editor files
+.DS_Store
+.vscode/
+
+# LSEG login details: never upload these
+lseg-data.config.json
+
+# Data: too large for GitHub (some files > 100 MB) and licensed LSEG data
+data/

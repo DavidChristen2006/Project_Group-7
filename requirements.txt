@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+pyarrow
+scipy
+scikit-learn
+xgboost
+statsmodels
+plotly
+joblib
+pandas_market_calendars
+vollib
+lseg-data
