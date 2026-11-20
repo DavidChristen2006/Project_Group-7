@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-
+""""define the variable run_name with"""
 RUN_NAME = (
     "AAPL_O_20150102_20150601_H21_S1000_K500_"
     "TC00a56a790ea1_EXP6500-12500_STEP5000_"
