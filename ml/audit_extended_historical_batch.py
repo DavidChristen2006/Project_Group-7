@@ -47,7 +47,7 @@ COVERAGE_PATH = (
 
 
 def main():
-"""Load three parquet files and perform four tests about the backtest"""
+    """Load three parquet files and perform four tests about the backtest"""
 
 # load three parquet files 
     inventory = pd.read_parquet(INVENTORY_PATH)
