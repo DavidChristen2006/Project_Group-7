@@ -1,28 +1,36 @@
+"""this code is an audit, which answers if all generated candidates were backtested, 
+which candidates are incomplete, if the reported P&L, return, 
+and hedge-improvement values mathematically consistant and how did each strategy 
+perform on each decision date"""
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-""""define the variable run_name with"""
+"""define the variable run_name with"""
 RUN_NAME = (
     "AAPL_O_20150102_20150601_H21_S1000_K500_"
     "TC00a56a790ea1_EXP6500-12500_STEP5000_"
     "CFG7d3bc7d1e923"
 )
 
+"""locate 3 files in the data folder"""
 ROOT = Path("data/processed")
 
+# candidates that were originally generated
 INVENTORY_PATH = (
     ROOT / "candidate_inventories" / RUN_NAME
     / "historical_candidates.parquet"
 )
 
+# completed backtest results
 RESULT_PATH = (
     ROOT / "candidate_backtests" / RUN_NAME
     / "candidate_ml_results.parquet"
 )
 
+# status information for each candidate 
 COVERAGE_PATH = (
     ROOT / "candidate_backtests" / RUN_NAME
     / "candidate_coverage.parquet"
@@ -48,7 +56,7 @@ def main():
     completed = results.groupby(
         "Decision Date"
     ).size().rename("Completed")
-
+    
     monthly = pd.concat(
         [generated, completed],
         axis=1,
