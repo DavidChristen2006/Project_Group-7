@@ -2,23 +2,24 @@
 import numpy as np
 import pandas as pd
 
-from pipeline.historical_data_pipeline import (
+#Turns raw prices into a training DataFrame for the Ml Model  
+from pipeline.historical_data_pipeline import ( 
     load_price_history
 )
 from pipeline.historical_option_pipeline import (
     load_option_quote_history
 )
 
-
+#List & Definition of the features 
 def build_historical_option_features(
     underlying_ric,
     option_contracts,
     volatility_window=20,
     momentum_window=20
 ):
-    stock = load_price_history(underlying_ric).copy()
+    stock = load_price_history(underlying_ric).copy()  #Copies data from the Api  
 
-    stock = stock.sort_index()
+    stock = stock.sort_index()          #Creates a DataFrame and sorts them from oldest to newest 
     stock["Close"] = pd.to_numeric(
         stock["Close"],
         errors="coerce"
@@ -29,23 +30,25 @@ def build_historical_option_features(
         fill_method=None
     )
 
-    stock["Historical Volatility"] = (
+    stock["Historical Volatility"] = (     #Measures the volatility of each stock on a rolling basis (20d), then computes the standard deviation on that 
+                                              #, and converts that into a yearly value, 252 trading days in a year. 
+                                                                                    
         stock["Daily Return"]
         .rolling(volatility_window)
         .std()
         * np.sqrt(252)
     )
 
-    stock["Momentum"] = (
+    stock["Momentum"] = (              # % Amount of change of a stock between 20 days ago and today's prices 
         stock["Close"].pct_change(
             periods=momentum_window,
-            fill_method=None
+            fill_method=None            #If there isn't change don't enter a value 
         )
     )
 
     feature_frames = []
 
-    for contract in option_contracts:
+    for contract in option_contracts:        #load the options price history 
         option_ric = contract["RIC"]
 
         quotes = load_option_quote_history(
@@ -54,7 +57,7 @@ def build_historical_option_features(
 
         quotes = quotes.sort_index()
 
-        features = quotes.join(
+        features = quotes.join(               #joins stock and option data and puts the columns next to eachother 
             stock[
                 [
                     "Close",
@@ -63,18 +66,18 @@ def build_historical_option_features(
                     "Momentum"
                 ]
             ],
-            how="inner"
+            how="inner"                  #innerjoins them to keep dates only where there is data from both stocks and options 
         )
 
-        features["Underlying RIC"] = underlying_ric
+        features["Underlying RIC"] = underlying_ric        #Creates all of the different rows and assigns the value to them 
         features["Option RIC"] = option_ric
 
         features["Option Type"] = contract["Type"]
         features["Strike"] = float(contract["Strike"])
 
-        expiry = pd.Timestamp(
+        expiry = pd.Timestamp(         #Gives a clear ending date, and normalizes the Df to midnight so that we only account for the day 
             contract["Expiry"]
-        ).normalize()
+        ).normalize() 
 
         features["Expiry"] = expiry
 
@@ -86,37 +89,37 @@ def build_historical_option_features(
             features["Days to Expiry"] > 0
         ].copy()
 
-        features["Moneyness"] = (
+        features["Moneyness"] = (         #Calculates how far is the option from it's strike 
             features["Close"] / features["Strike"]
         )
 
-        features["Strike to Spot"] = (
+        features["Strike to Spot"] = (    #Calculates how far is the strike to the stock price 
             features["Strike"] / features["Close"]
         )
 
-        features["Relative Spread"] = (
+        features["Relative Spread"] = (   #Calculates how expensive it is to trade the option = Spread
             features["SPREAD"] / features["MID"]
         )
 
-        features["Decision Date"] = features.index
+        features["Decision Date"] = features.index  #Saves Decision date into a column 
 
         feature_frames.append(
             features.reset_index(drop=True)
         )
 
-    if not feature_frames:
+    if not feature_frames:            #Check stops program if there is no value
         raise ValueError("No option contracts supplied.")
 
-    dataset = pd.concat(
+    dataset = pd.concat(        #Stacks all of the per option tables into one single table 
         feature_frames,
         ignore_index=True
     )
 
-    dataset = dataset.sort_values(
+    dataset = dataset.sort_values(    #Rearrange values in the dataset by Decision dat and Option Ric 
         ["Decision Date", "Option RIC"]
     ).reset_index(drop=True)
 
-    required_features = [
+    required_features = [       #Values get dropped from the dataset if they don't present the followning features  
         "BID",
         "ASK",
         "Close",
@@ -130,7 +133,7 @@ def build_historical_option_features(
         subset=required_features
     )
 
-    if dataset.empty:
+    if dataset.empty:         #Program stops running if no value is stored in the dataset 
         raise ValueError(
             "No complete historical feature observations."
         )
