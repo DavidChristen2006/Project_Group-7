@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-"""define the variable run_name with"""
+"""define the variable run_name including the stock (Apple), 
+time period (2015-01-02 bis 2015-06-01) etc."""
 RUN_NAME = (
     "AAPL_O_20150102_20150601_H21_S1000_K500_"
     "TC00a56a790ea1_EXP6500-12500_STEP5000_"
