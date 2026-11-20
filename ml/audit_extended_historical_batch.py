@@ -1,15 +1,23 @@
-"""this code is an audit, which answers if all generated candidates were backtested, 
-which candidates are incomplete, if the reported P&L, return, 
-and hedge-improvement values mathematically consistant and how did each strategy 
-perform on each decision date"""
+"""
+this code is an audit-script, which answers 
+1. if all generated candidates were backtested, 
+2. which candidates are incomplete and why, 
+3. are reported P&L, return, and hedge-improvement values mathematically consistant 
+4. and how did each strategy perform on each decision date
+
+the code only reads files and changes nothing 
+"""
 
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-"""define the variable run_name including the stock (Apple), 
-time period (2015-01-02 bis 2015-06-01) etc."""
+# configuration
+# Run_Name is a folder name of one specific run,
+# stock = Apple, date range = 2015-01-02 to 2015-06-01, horizon = H21 etc.
+# to audit a different run, just change this valaue  
+
 RUN_NAME = (
     "AAPL_O_20150102_20150601_H21_S1000_K500_"
     "TC00a56a790ea1_EXP6500-12500_STEP5000_"
@@ -19,7 +27,7 @@ RUN_NAME = (
 """locate 3 files in the data folder"""
 ROOT = Path("data/processed")
 
-# candidates that were originally generated
+# all candidates (hedging strategies) that were originally generated
 INVENTORY_PATH = (
     ROOT / "candidate_inventories" / RUN_NAME
     / "historical_candidates.parquet"
@@ -39,17 +47,25 @@ COVERAGE_PATH = (
 
 
 def main():
+"""Load three parquet files and perform four tests about the backtest"""
+
+# load three parquet files 
     inventory = pd.read_parquet(INVENTORY_PATH)
     results = pd.read_parquet(RESULT_PATH)
     coverage = pd.read_parquet(COVERAGE_PATH)
 
+# standardize the date column in all three tables 
+# converts the date values to pandas timestamps and removes time components with normalize()
     for frame in (inventory, results, coverage):
         frame["Decision Date"] = pd.to_datetime(
             frame["Decision Date"]
         ).dt.normalize()
 
+# check 1: where all candidates backtested?
+
     print("\n--- MONTHLY COVERAGE ---")
 
+# number of candidates per decision date: generated vs. completed 
     generated = inventory.groupby(
         "Decision Date"
     ).size().rename("Generated")
@@ -58,16 +74,22 @@ def main():
         "Decision Date"
     ).size().rename("Completed")
     
+# creates the DataFrame 'monthly' and put both counts side by side 
+# if no candidate is completed on a date fillna(0) handles it
     monthly = pd.concat(
         [generated, completed],
         axis=1,
     ).fillna(0).astype(int)
 
+# calculates the imcomplete candidates and 
+# adds the column to the DataFrame
     monthly["Incomplete"] = (
         monthly["Generated"]
         - monthly["Completed"]
     )
 
+# calculates the completion rate (share of completed ones) and 
+# adds the column to the DataFrame
     monthly["Completion Rate"] = (
         monthly["Completed"]
         / monthly["Generated"]
