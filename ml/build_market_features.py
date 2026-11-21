@@ -13,11 +13,14 @@ import lseg.data as ld
 import numpy as np
 import pandas as pd
 
-
+# the data is stored under data/processed/ml_datasets/aapl_h21, 
+# historical prices are requested for AAPL
 ROOT = Path("data/processed/ml_datasets/aapl_h21")
 
+# AAPL.O is LSEG's RIC identifier for AAPL
 RIC = "AAPL.O"
 
+# declares the eight market features (5 days, 21 days etc.)
 MARKET_COLUMNS = [
     "Return 5D",
     "Return 21D",
@@ -31,6 +34,12 @@ MARKET_COLUMNS = [
 
 
 def normalize_history(history):
+    """
+    converts LSEG's response into a clean pandas series
+    """
+    
+    # if no historical price data is provided the script is caused
+    # to stop
     if history is None or history.empty:
         raise ValueError(
             "LSEG returned no historical prices."
@@ -38,6 +47,7 @@ def normalize_history(history):
 
     frame = history.copy()
 
+    # searches for the column levels for AAPL.O and extracts that section
     if isinstance(frame.columns, pd.MultiIndex):
         for level in range(frame.columns.nlevels):
             if RIC in frame.columns.get_level_values(level):
@@ -48,6 +58,9 @@ def normalize_history(history):
                 )
                 break
 
+    # it looks for 'TRDPRC_1' (LSEG's historical trading-price field) 
+    # if the tables has only 1 column, this one is chosen for the 
+    # price series
     if "TRDPRC_1" in frame.columns:
         series = frame["TRDPRC_1"]
     elif frame.shape[1] == 1:
@@ -65,18 +78,22 @@ def normalize_history(history):
             )
         series = series.iloc[:, 0]
 
+    # converts prices to numbers and replaces invalid values with NaN
     prices = pd.to_numeric(
         series,
         errors="coerce",
     )
 
+    # the index is converted to dates and normalize() removes times 
     prices.index = pd.to_datetime(
         prices.index
     ).normalize()
 
+    # prices are stored chronologically 
     prices = prices.sort_index()
     prices.name = "Historical Price"
 
+    # duplicate dates are rejected 
     if prices.index.has_duplicates:
         raise ValueError(
             "Duplicate dates returned within an LSEG request."
@@ -84,24 +101,32 @@ def normalize_history(history):
 
     prices = prices.dropna().astype(float)
 
+    # missing values or zero and negative prices are rejected
     if prices.empty or (prices <= 0).any():
         raise ValueError(
             "Invalid historical stock prices."
         )
 
+    # the resulting series contains the date as its index and the AAPL price
+    # as its values 
     return prices
 
 
 def download_historical_prices():
+    """
+    downloads prices in overlapping yearly windows 
+    """
     chunks = []
 
     print("\n--- LSEG HISTORICAL PRICE DOWNLOAD ---")
 
+    # open the LSEG session and establishes the connection
     ld.open_session()
 
     try:
         for year in range(2014, 2025):
-            # Fetch overlapping calendar windows.
+            # Fetch overlapping calendar windows from 2013-12-20 until
+            # 2026-01-10
             # This also helps with start-date behavior.
             start = f"{year - 1}-12-20"
             end = f"{year + 1}-01-10"
@@ -118,17 +143,21 @@ def download_historical_prices():
                 end=end,
             )
 
+            # normalizes the result 
             prices = normalize_history(history)
 
             print(
                 f"Retrieved {len(prices)} observations."
             )
 
+            # the normalized results are added to chunks 
             chunks.append(prices)
 
+    # ensures the session closes even if downloading fails 
     finally:
         ld.close_session()
 
+    # concatenate all downloads Series and sort them by date 
     combined = pd.concat(chunks).sort_index()
 
     # Overlapping requests may contain the same date.
@@ -137,6 +166,8 @@ def download_historical_prices():
         combined.index.duplicated(keep=False)
     ]
 
+    # checks for every duplicate date whether all downloaded price values
+    # are approximately equal (np.allclose(...))
     for date, values in duplicates.groupby(level=0):
         arr = values.to_numpy(dtype=float)
 
@@ -151,6 +182,7 @@ def download_historical_prices():
                 f"on {date.date()}: {arr}"
             )
 
+    # if overlapping values agree, the first copy of each date is retained 
     combined = combined[
         ~combined.index.duplicated(keep="first")
     ]
@@ -160,22 +192,30 @@ def download_historical_prices():
             "Duplicate historical dates remain."
         )
 
+    # print the total observations
     print("\nTotal price observations:", len(combined))
 
+    # print first available date 
     print(
         "First price date:",
         combined.index.min().date(),
     )
 
+    # print last available date 
     print(
         "Last price date:",
         combined.index.max().date(),
     )
 
+    # returns the combined price series 
     return combined
 
 
 def calculate_market_features(prices):
+    """
+    calculates features using the historical prices 
+    """
+    # calculate daily returns from one trading date to the next
     daily_returns = prices.pct_change(
         fill_method=None
     )
@@ -184,18 +224,25 @@ def calculate_market_features(prices):
         index=prices.index
     )
 
+    # compare today's price to the price from 5, 21, 63 observations
+    # earlier 
+    # 5-trading-day-return
     features["Return 5D"] = (
         prices / prices.shift(5) - 1
     )
 
+    #21-trading-day-return
     features["Return 21D"] = (
         prices / prices.shift(21) - 1
     )
 
+    # 63-trading-day-return 
     features["Return 63D"] = (
         prices / prices.shift(63) - 1
     )
 
+    # calculate volatility (rolling standard deviation) over 21 observations
+    # and multiplies by sqrt(252) to annualize the volatility 
     features["Volatility 21D"] = (
         daily_returns.rolling(
             window=21,
@@ -203,6 +250,8 @@ def calculate_market_features(prices):
         ).std() * np.sqrt(252)
     )
 
+    # calculates volatility over 63 observations and multiplies by
+    # sqrt(252) to annualize the volatility 
     features["Volatility 63D"] = (
         daily_returns.rolling(
             window=63,
@@ -210,25 +259,36 @@ def calculate_market_features(prices):
         ).std() * np.sqrt(252)
     )
 
+    # finds the highest price in the previous 63 observations 
     rolling_high = prices.rolling(
         window=63,
         min_periods=63,
     ).max()
 
+    # calculates the drawdown 
+    # 0.00 means the price is at its recent maximum
+    # -0.10 means the price is 10% below its recent maximum
+    # -0.25 means the price is 25% below its recent maximum  
     features["Drawdown 63D"] = (
         prices / rolling_high - 1
     )
 
+    # calculates the simple moving averages over 21 days
     sma_21 = prices.rolling(
         window=21,
         min_periods=21,
     ).mean()
 
+    # calculates the simple moving averages over 63 days 
     sma_63 = prices.rolling(
         window=63,
         min_periods=63,
     ).mean()
 
+    # express the current price relative to each average and adds the 
+    # value to the features-DataFrame 
+    # positive means the price is above the average
+    # negative means the price is below the average 
     features["Distance SMA 21"] = (
         prices / sma_21 - 1
     )
@@ -237,40 +297,51 @@ def calculate_market_features(prices):
         prices / sma_63 - 1
     )
 
+    # returns the market DataFrame 
     return features[MARKET_COLUMNS]
 
 
 def validate_split_adjustments(prices):
+    """chekcs whether AAPL prices around the 2020 split are 
+    adjusted correctly"""
     print("\n--- CORPORATE ACTION CHECK ---")
 
+    # looks at 2020-08-24 through 2020-09-04
+    # because a raw AAPL 4-for-1 split makes an unadjusted price 
+    # appear to drop sharply
     window = prices.loc[
         "2020-08-24":"2020-09-04"
     ]
 
     print(window.to_string())
-
+    # raises an error if the pre-split price is missing
     if pd.Timestamp("2020-08-28") not in window.index:
         raise ValueError(
             "Missing pre-split price on 2020-08-28."
         )
 
+    # raises an error if the post-split price is missing 
     if pd.Timestamp("2020-08-31") not in window.index:
         raise ValueError(
             "Missing post-split price on 2020-08-31."
         )
 
+    # before is the price at 2020-08-28
     before = float(
         window.loc["2020-08-28"]
     )
 
+    # after is the price at 2020-08-31
     after = float(
         window.loc["2020-08-31"]
     )
 
+    # calculates the absolute change over the split
     split_window_return = (
         after / before - 1
     )
 
+    # prints the absolute change in percent 
     print(
         "\n2020-08-28 to 2020-08-31 return:",
         f"{split_window_return:.2%}",
@@ -278,6 +349,7 @@ def validate_split_adjustments(prices):
 
     # A raw 4-for-1 split would create an apparent
     # decline of approximately 75%.
+    # if the absolute change exceeds 50%, it raises an error 
     if abs(split_window_return) > 0.50:
         raise ValueError(
             "Possible unadjusted corporate action "
@@ -292,12 +364,17 @@ def validate_decision_dates(
     market_features,
     decision_dates,
 ):
+    """ensures that every candidate decision date has complete 
+    historical features"""
     print("\n--- DECISION DATE VALIDATION ---")
 
+    # converts the supplied dates into a normalized DatetimeIndex
     dates = pd.DatetimeIndex(
         pd.to_datetime(decision_dates)
     ).normalize()
 
+    # if a decision date is absent from the price date, the script 
+    # prints it and stops
     missing = dates.difference(prices.index)
 
     if len(missing) > 0:
@@ -310,10 +387,15 @@ def validate_decision_dates(
             "required decision dates."
         )
 
+    # creates a table with one row per unique decision date 
+    # and one column per market feature 
     selected = market_features.loc[dates].copy()
 
     selected.index.name = "Decision Date"
 
+    # checks for NaN values (fewer than 5, 21 or 63 observations 
+    # or fewer than enough rolling data), reports the affected 
+    # dates and raises an error 
     if selected.isna().any().any():
         invalid = selected[
             selected.isna().any(axis=1)
@@ -327,6 +409,8 @@ def validate_decision_dates(
             "market-state features."
         )
 
+    # rejects values that are
+    # infinite, undefined or otherwise not finite numbers 
     if not np.isfinite(
         selected.to_numpy(dtype=float)
     ).all():
@@ -343,6 +427,7 @@ def validate_decision_dates(
 
     print("Decision date validation: PASS")
 
+    # returns a validated table indexed by decision date 
     return selected
 
 
@@ -351,6 +436,10 @@ def build_augmented_dataset(
     metadata,
     original_features,
 ):
+    """joins the date-level features onto the original candidate table """
+    
+    # normalize candidate decision dates 
+    # ensures the join keys match the market-feature index 
     dates = pd.to_datetime(
         metadata["Decision Date"]
     ).dt.normalize()
@@ -362,15 +451,20 @@ def build_augmented_dataset(
         pd.DatetimeIndex(dates)
     )
 
+    # it removes the date inde and creates a row index matching the
+    # original candidate table 
     market_rows = market_rows.reset_index(
         drop=True
     )
 
+    # verifies if the market table have exactly as many rows as the original
+    # feature table 
     if len(market_rows) != len(original_features):
         raise ValueError(
             "Feature row counts do not match."
         )
 
+    # prevents silently replacing or duplicating existing columns
     if set(MARKET_COLUMNS).intersection(
         original_features.columns
     ):
@@ -379,6 +473,7 @@ def build_augmented_dataset(
             "in the original feature table."
         )
 
+    # this horizontally joins the original cnadidate features 
     augmented = pd.concat(
         [
             original_features.reset_index(drop=True),
