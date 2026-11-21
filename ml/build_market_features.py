@@ -473,7 +473,8 @@ def build_augmented_dataset(
             "in the original feature table."
         )
 
-    # this horizontally joins the original cnadidate features 
+    # this horizonally joins the original cnadidate features and
+    # newly calculated market features 
     augmented = pd.concat(
         [
             original_features.reset_index(drop=True),
@@ -482,6 +483,7 @@ def build_augmented_dataset(
         axis=1,
     )
 
+    # checks for duplicate column names and missing market values 
     if augmented.columns.duplicated().any():
         raise ValueError(
             "Duplicate feature columns found."
@@ -492,10 +494,15 @@ def build_augmented_dataset(
             "Market-feature join introduced missing data."
         )
 
+    # returns the augmented DataFrame
     return augmented
 
 
 def main():
+    """executes the full pipeline 
+    """
+    
+    # reads .parquet files   
     metadata = pd.read_parquet(
         ROOT / "metadata.parquet"
     )
@@ -504,19 +511,25 @@ def main():
         ROOT / "features.parquet"
     )
 
+    # requires both tables to contain the same number of rows
     if len(metadata) != len(original_features):
         raise ValueError(
             "Metadata and features have different row counts."
         )
 
+    # normalize the decision date 
     dates = pd.to_datetime(
         metadata["Decision Date"]
     ).dt.normalize()
 
+    # duplicate candidate dates are removed because one set of market 
+    # features is needed per date 
     decision_dates = pd.DatetimeIndex(
         dates.unique()
     ).sort_values()
 
+    # prints candidate count, unique decision date count and
+    # number of original feature columns 
     print("\n--- DATASET ---")
     print("Candidates:", len(metadata))
     print("Decision dates:", len(decision_dates))
@@ -525,43 +538,53 @@ def main():
         original_features.shape[1],
     )
 
+    # download historical prices
     prices = download_historical_prices()
 
+    # checks for the 2020 stock split
     validate_split_adjustments(prices)
 
+    # calculate market features 
     historical_features = calculate_market_features(
         prices
     )
 
+    # validate each decision date 
     selected = validate_decision_dates(
         prices,
         historical_features,
         decision_dates,
     )
 
+    # market features are attached to the original rows 
     augmented = build_augmented_dataset(
         selected,
         metadata,
         original_features,
     )
 
+    # print a summary
     print("\n--- FINAL FEATURE DATASET ---")
 
+    # final candidate row count 
     print(
         "Candidate rows:",
         len(augmented),
     )
 
+    # number of original features
     print(
         "Original features:",
         original_features.shape[1],
     )
 
+    # number of newly added features 
     print(
         "New market features:",
         len(MARKET_COLUMNS),
     )
 
+    # total feature count 
     print(
         "Total features:",
         augmented.shape[1],
@@ -587,6 +610,7 @@ def main():
         index=False,
     )
 
+    # print the saved files
     print("\n--- FILES SAVED ---")
 
     print(
