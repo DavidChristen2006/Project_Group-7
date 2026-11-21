@@ -1,10 +1,24 @@
 """Build historical market-state features for AAPL hedging ML.
 
+Downloads daily AAPL prices from LSEG, computes eight market-state
+features per decision date (returns, volatility, drawdown, distance to
+moving averages), validates them and appends them to the candidate
+feature table. All features use only prices up to the decision date,
+so no future information leaks into the model.
+
 Run from project root:
     py -m ml.build_market_features
 
+Reads:  metadata.parquet, features.parquet (in ROOT)
+Writes: historical_market_prices.parquet, market_features_by_date.parquet,
+        features_with_market.parquet (in ROOT)
+
 Required packages:
     lseg-data, numpy, pandas, pyarrow
+
+GenAI usage: Claude (Anthropic) was used to explain the code and to
+draft, review and correct comments and docstrings. The comments were
+checked and adapted by the author(s).
 """
 
 from pathlib import Path
@@ -14,9 +28,9 @@ import numpy as np
 import pandas as pd
 
 # the data is stored under data/processed/ml_datasets/aapl_h21, 
-# historical prices are requested for AAPL
 ROOT = Path("data/processed/ml_datasets/aapl_h21")
 
+# historical prices are requested for AAPL
 # AAPL.O is LSEG's RIC identifier for AAPL
 RIC = "AAPL.O"
 
@@ -34,12 +48,27 @@ MARKET_COLUMNS = [
 
 
 def normalize_history(history):
-    """
-    converts LSEG's response into a clean pandas series
+    """Convert an LSEG history response into a clean price series.
+
+    Selects the AAPL.O price field (TRDPRC_1, or the only column),
+    converts values to numbers, normalizes the dates, sorts them and
+    drops missing values.
+
+    Args:
+        history: DataFrame returned by ld.get_history(). Its columns may
+            be a MultiIndex containing the RIC.
+
+    Returns:
+        pandas Series named "Historical Price" with a sorted,
+        duplicate-free DatetimeIndex (no time of day) and float values.
+
+    Raises:
+        ValueError: if the response is empty, the price column cannot be
+            identified, dates are duplicated, or no valid positive
+            prices remain.
     """
     
-    # if no historical price data is provided the script is caused
-    # to stop
+    # raises an error if LSEG returned no data
     if history is None or history.empty:
         raise ValueError(
             "LSEG returned no historical prices."
@@ -59,7 +88,7 @@ def normalize_history(history):
                 break
 
     # it looks for 'TRDPRC_1' (LSEG's historical trading-price field) 
-    # if the tables has only 1 column, this one is chosen for the 
+    # if the table has only 1 column, this one is chosen for the 
     # price series
     if "TRDPRC_1" in frame.columns:
         series = frame["TRDPRC_1"]
@@ -99,9 +128,11 @@ def normalize_history(history):
             "Duplicate dates returned within an LSEG request."
         )
 
+    # missing values are dropped
     prices = prices.dropna().astype(float)
 
-    # missing values or zero and negative prices are rejected
+    # an empty series or 
+    # prices ≤ 0 raise an error
     if prices.empty or (prices <= 0).any():
         raise ValueError(
             "Invalid historical stock prices."
@@ -113,8 +144,25 @@ def normalize_history(history):
 
 
 def download_historical_prices():
-    """
-    downloads prices in overlapping yearly windows 
+    """Download daily AAPL prices from LSEG in overlapping yearly windows.
+
+    For each year from 2014 to 2024, one window from 20 December of the
+    previous year to 10 January of the next year is requested, so the
+    data covers 2013-12-20 to 2025-01-10. Days returned by two windows
+    must have consistent prices (checked with np.allclose); the first
+    copy is kept.
+
+    Returns:
+        pandas Series of daily prices with a sorted, duplicate-free
+        DatetimeIndex, as produced by normalize_history().
+
+    Raises:
+        ValueError: if overlapping windows contain inconsistent prices
+            or duplicate dates remain.
+
+    Side effects:
+        Opens and closes an LSEG session (also if the download fails)
+        and prints progress and a short summary.
     """
     chunks = []
 
@@ -126,8 +174,7 @@ def download_historical_prices():
     try:
         for year in range(2014, 2025):
             # Fetch overlapping calendar windows from 2013-12-20 until
-            # 2026-01-10
-            # This also helps with start-date behavior.
+            # 2025-01-10
             start = f"{year - 1}-12-20"
             end = f"{year + 1}-01-10"
 
@@ -212,8 +259,21 @@ def download_historical_prices():
 
 
 def calculate_market_features(prices):
-    """
-    calculates features using the historical prices 
+    """Compute the eight market-state features for every trading day.
+
+    Features: 5/21/63-day returns, 21/63-day volatility (standard
+    deviation of daily returns, annualized with sqrt(252)), drawdown
+    relative to the 63-day high (including today) and the distance to
+    the 21/63-day simple moving averages. Only past and current prices
+    are used, so there is no look-ahead. The first days lack enough
+    history and contain NaN.
+
+    Args:
+        prices: pandas Series of daily prices with a sorted
+            DatetimeIndex.
+
+    Returns:
+        DataFrame indexed by date with the columns of MARKET_COLUMNS.
     """
     # calculate daily returns from one trading date to the next
     daily_returns = prices.pct_change(
@@ -231,7 +291,7 @@ def calculate_market_features(prices):
         prices / prices.shift(5) - 1
     )
 
-    #21-trading-day-return
+    # 21-trading-day-return
     features["Return 21D"] = (
         prices / prices.shift(21) - 1
     )
@@ -242,7 +302,8 @@ def calculate_market_features(prices):
     )
 
     # calculate volatility (rolling standard deviation) over 21 observations
-    # and multiplies by sqrt(252) to annualize the volatility 
+    # of the daily returns and multiplies by sqrt(252) to annualize 
+    # the volatility 
     features["Volatility 21D"] = (
         daily_returns.rolling(
             window=21,
@@ -259,7 +320,7 @@ def calculate_market_features(prices):
         ).std() * np.sqrt(252)
     )
 
-    # finds the highest price in the previous 63 observations 
+    # highest price of the last 63 observations, including today 
     rolling_high = prices.rolling(
         window=63,
         min_periods=63,
@@ -302,8 +363,26 @@ def calculate_market_features(prices):
 
 
 def validate_split_adjustments(prices):
-    """chekcs whether AAPL prices around the 2020 split are 
-    adjusted correctly"""
+    """Check that AAPL prices contain no unadjusted jump at the 2020 split.
+
+    Apple split its stock 4-for-1, with 2020-08-31 as the first
+    split-adjusted trading day. Unadjusted prices would show an apparent
+    drop of about 75% between 2020-08-28 and 2020-08-31. The function
+    compares these two prices and fails if the return exceeds 50% in
+    either direction. This is a plausibility check, not proof that the
+    adjustment is exact.
+
+    Args:
+        prices: pandas Series of daily AAPL prices with a sorted
+            DatetimeIndex.
+
+    Raises:
+        ValueError: if the price on 2020-08-28 or 2020-08-31 is missing,
+            or if the return between them suggests an unadjusted split.
+
+    Side effects:
+        Prints the price window and the split-window return.
+    """
     print("\n--- CORPORATE ACTION CHECK ---")
 
     # looks at 2020-08-24 through 2020-09-04
@@ -336,12 +415,12 @@ def validate_split_adjustments(prices):
         window.loc["2020-08-31"]
     )
 
-    # calculates the absolute change over the split
+    # calculates the relative change (return) over the split
     split_window_return = (
         after / before - 1
     )
 
-    # prints the absolute change in percent 
+    # prints the return in percent 
     print(
         "\n2020-08-28 to 2020-08-31 return:",
         f"{split_window_return:.2%}",
@@ -364,8 +443,26 @@ def validate_decision_dates(
     market_features,
     decision_dates,
 ):
-    """ensures that every candidate decision date has complete 
-    historical features"""
+    """Ensure every decision date has a complete set of valid features.
+
+    Args:
+        prices: pandas Series of daily prices (DatetimeIndex).
+        market_features: DataFrame of features indexed by date, as
+            returned by calculate_market_features().
+        decision_dates: Iterable of unique decision dates.
+
+    Returns:
+        DataFrame with one row per decision date (index named
+        "Decision Date") and one column per market feature.
+
+    Raises:
+        ValueError: if a decision date is missing in the price data, a
+            feature is NaN (too little history), or a feature is not a
+            finite number.
+
+    Side effects:
+        Prints the affected dates on failure and a validation summary.
+    """
     print("\n--- DECISION DATE VALIDATION ---")
 
     # converts the supplied dates into a normalized DatetimeIndex
@@ -373,7 +470,7 @@ def validate_decision_dates(
         pd.to_datetime(decision_dates)
     ).normalize()
 
-    # if a decision date is absent from the price date, the script 
+    # if a decision date is absent from the price dates, the script 
     # prints it and stops
     missing = dates.difference(prices.index)
 
@@ -393,8 +490,8 @@ def validate_decision_dates(
 
     selected.index.name = "Decision Date"
 
-    # checks for NaN values (fewer than 5, 21 or 63 observations 
-    # or fewer than enough rolling data), reports the affected 
+    # checks for NaN values (NaN appears when fewer 
+    # than 5/21/63 prior prices exist), reports the affected 
     # dates and raises an error 
     if selected.isna().any().any():
         invalid = selected[
@@ -436,7 +533,29 @@ def build_augmented_dataset(
     metadata,
     original_features,
 ):
-    """joins the date-level features onto the original candidate table """
+    """Attach the date-level market features to each candidate row.
+
+    Candidates sharing a decision date receive identical market
+    features. The join is positional: row i of metadata must belong to
+    row i of original_features.
+
+    Args:
+        selected_features: DataFrame of market features indexed by
+            decision date.
+        metadata: DataFrame with a "Decision Date" column, one row per
+            candidate.
+        original_features: DataFrame of the existing candidate
+            features, in the same row order as metadata.
+
+    Returns:
+        DataFrame with the original feature columns followed by the
+        market feature columns.
+
+    Raises:
+        ValueError: if row counts differ, market columns already exist,
+            column names are duplicated, or the join leaves missing
+            values.
+    """
     
     # normalize candidate decision dates 
     # ensures the join keys match the market-feature index 
@@ -451,13 +570,13 @@ def build_augmented_dataset(
         pd.DatetimeIndex(dates)
     )
 
-    # it removes the date inde and creates a row index matching the
+    # it removes the index and creates a row index matching the
     # original candidate table 
     market_rows = market_rows.reset_index(
         drop=True
     )
 
-    # verifies if the market table have exactly as many rows as the original
+    # verifies if the market table has exactly as many rows as the original
     # feature table 
     if len(market_rows) != len(original_features):
         raise ValueError(
@@ -473,7 +592,7 @@ def build_augmented_dataset(
             "in the original feature table."
         )
 
-    # this horizonally joins the original cnadidate features and
+    # this horizontally joins the original candidate features and
     # newly calculated market features 
     augmented = pd.concat(
         [
@@ -499,7 +618,21 @@ def build_augmented_dataset(
 
 
 def main():
-    """executes the full pipeline 
+    """Run the full pipeline and save the augmented feature dataset.
+
+    Loads the candidate tables, downloads and validates AAPL prices,
+    computes and validates the market features for all decision dates,
+    appends them to the candidate features and prints a summary. Files
+    are written only after all checks have passed.
+
+    Raises:
+        ValueError: if metadata and features have different row counts
+            or any validation step fails.
+
+    Side effects:
+        Writes historical_market_prices.parquet,
+        market_features_by_date.parquet and
+        features_with_market.parquet to ROOT.
     """
     
     # reads .parquet files   
