@@ -12,8 +12,8 @@ Usage:
 Reads:  historical_ml_features.parquet in each matching run folder
 Writes: <RIC>_<start>_<end>_TC<tag>.parquet in ml_datasets/
 
-GenAI usage: Claude (Anthropic) was used to draft and review comments 
-and docstrings.
+GenAI usage: Copilot was used to understand the code in detail and 
+Claude was used to draft and review comments and docstrings.
 """
 
 import argparse
