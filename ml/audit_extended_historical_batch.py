@@ -24,7 +24,6 @@ RUN_NAME = (
     "CFG7d3bc7d1e923"
 )
 
-"""locate 3 files in the data folder"""
 ROOT = Path("data/processed")
 
 # all candidates (hedging strategies) that were originally generated
@@ -47,7 +46,7 @@ COVERAGE_PATH = (
 
 
 def main():
-    """Load three parquet files and perform four tests about the backtest"""
+    """Load three parquet files and perform four tests on the backtest"""
 
 # load three parquet files 
     inventory = pd.read_parquet(INVENTORY_PATH)
@@ -61,7 +60,7 @@ def main():
             frame["Decision Date"]
         ).dt.normalize()
 
-# check 1: where all candidates backtested?
+# Check 1: where all candidates backtested?
 
     print("\n--- MONTHLY COVERAGE ---")
 
@@ -95,14 +94,20 @@ def main():
         / monthly["Generated"]
     )
 
+# prints the completion rate as a percentage value 
     print(
         monthly.to_string(
             float_format=lambda x: f"{x:.2%}"
         )
     )
 
+# Check 2: Which candidates are incomplete?
+
     print("\n--- INCOMPLETE CANDIDATES ---")
 
+# selects the rows in the DataFrame, where status is not "Complete" 
+# print how many are incomplete together with the decision date, strategy, candidate ID
+# status and reason 
     incomplete = coverage.loc[
         coverage["Status"] != "Complete"
     ].copy()
@@ -129,8 +134,12 @@ def main():
             )
         )
 
+# Check 3: is the accounting consistent? 
+
     print("\n--- ACCOUNTING VALIDATION ---")
 
+# calculate expectations and compare with the sored value 
+# net p&l (p&l - transaction fees) 
     expected_pnl = (
         results["Gross Final P&L"]
         - results["Total Transaction Costs"]
@@ -141,6 +150,7 @@ def main():
         - expected_pnl
     ).abs()
 
+# expected returns (p&l devided by the invested capital)
     expected_returns = (
         results["Final P&L"]
         / (
@@ -149,11 +159,13 @@ def main():
         )
     )
 
+# expected improvement (return with hedging - return without hedging)
     expected_improvement = (
         results["Final Return"]
         - results["Unhedged Final Return"]
     )
 
+# np.allclose accepts tiny differences
     assert np.allclose(
         results["Final P&L"],
         expected_pnl,
@@ -175,6 +187,7 @@ def main():
         atol=1e-8,
     ), "Hedge improvement reconciliation failed."
 
+# We only reach this point if all three assertions passed.
     print(
         "Maximum P&L discrepancy:",
         f"{pnl_errors.max():.10f}",
@@ -183,7 +196,15 @@ def main():
     print("Return reconciliation: PASS")
     print("Hedge improvement reconciliation: PASS")
 
+# Check 4: Strategy decision per decision date
     print("\n--- STRATEGY PERFORMANCE BY MONTH ---")
+
+# Group by (decision date, strategy) and compute three metrics per group:
+# Candidates       = number of candidates
+# Mean_Improvement = average hedge improvement
+#                    (positive = the hedge helped)
+# Mean_Drawdown    = average maximum drop from the peak
+#                    (more negative = riskier)
 
     strategy_monthly = (
         results.groupby(
