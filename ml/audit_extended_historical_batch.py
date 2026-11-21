@@ -46,7 +46,22 @@ COVERAGE_PATH = (
 
 
 def main():
-    """Load three parquet files and perform four tests on the backtest"""
+    """Run the four audit checks on one backtest run and print the results.
+
+    Reads the candidate inventory, the backtest results and the coverage
+    table of the run defined by RUN_NAME, then:
+      1. compares generated vs. completed candidates per decision date,
+      2. lists all candidates whose status is not "Complete",
+      3. recomputes P&L, return and hedge improvement and compares them
+         with the stored values,
+      4. summarizes hedge improvement and drawdown per strategy and date.
+
+    Raises:
+        AssertionError: if one of the accounting reconciliations fails.
+
+    Returns:
+        None. Results are printed; no files are modified.
+    """
 
 # load three parquet files 
     inventory = pd.read_parquet(INVENTORY_PATH)
