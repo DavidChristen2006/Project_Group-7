@@ -1,13 +1,30 @@
+"""
+Builds one ML dataset for a single underlying by merging several
+historical backtest runs.
+
+The script finds all matching run folders, filters them to the requested
+date range, removes overlapping observations (the largest run wins),
+validates the result and saves it as one parquet file.
+
+Usage:
+    python build_dataset.py --ric AAPL.O --start 2022-01-01 --end 2023-12-31
+
+Reads:  historical_ml_features.parquet in each matching run folder
+Writes: <RIC>_<start>_<end>_TC<tag>.parquet in ml_datasets/
+
+GenAI usage: Claude (Anthropic) was used to draft and review comments 
+and docstrings.
+"""
 
 import argparse
 from pathlib import Path
 
 import pandas as pd
 
-# the project dictionary is calculated from the script's location
+# the project directory is calculated from the script's location
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# defines a dictionary which contains historical backtest runs
+# defines a directory which contains historical backtest runs
 RUNS_DIR = (
     PROJECT_ROOT
     / "data"
@@ -15,7 +32,7 @@ RUNS_DIR = (
     / "historical_runs"
 )
 
-# defines a dictionary where the final combined dataset will be saved
+# defines a directory where the final combined dataset will be saved
 DATASETS_DIR = (
     PROJECT_ROOT
     / "data"
@@ -33,21 +50,40 @@ UNIQUE_COLUMNS = [
 
 
 def discover_historical_runs(ric, cost_tag=None):
-    """The function searches RUNS_DIR for matching run folders"""
+    """Find all run folders for one underlying that contain feature files.
+
+    A folder qualifies if its name starts with the RIC prefix
+    (e.g. "AAPL_O_"), contains "_TC" (legacy runs without it are
+    skipped), matches cost_tag if one is given, and contains the file
+    historical_ml_features.parquet.
+
+    Args:
+        ric: Underlying RIC, e.g. "AAPL.O".
+        cost_tag: Optional transaction-cost tag (the part of the folder
+            name after "_TC"). If None, runs with any tag are returned.
+
+    Returns:
+        List of Paths to the matching historical_ml_features.parquet
+        files, in alphabetical order of the run folders. The list can
+        be empty.
+
+    Raises:
+        FileNotFoundError: if RUNS_DIR does not exist.
+    """
     
-    # raises an Error if the historical-runs dictionary does not exist 
+    # raises an Error if the historical-runs directory does not exist 
     if not RUNS_DIR.is_dir():
         raise FileNotFoundError(
             f"Historical runs directory not found: {RUNS_DIR}"
         )
 
-    # convert the RIC into a folder prefix (ex. APPL.0 becomes APPL_0_)
+    # convert the RIC into a folder prefix (ex. AAPL.O becomes AAPL_O_)
     prefix = ric.replace(".", "_") + "_"
     paths = []
 
     for folder in sorted(RUNS_DIR.iterdir()):
         # considers only folders with this prefix and skips files that 
-        # are not dictionaries, folders unrelated to the requested RIC, 
+        # are not directories, folders unrelated to the requested RIC, 
         # legacy folders without _TC in their name, or runs with a 
         # different transaction-cost tag
         if not folder.is_dir():
@@ -81,8 +117,23 @@ def build_dataset(
     end_date,
     cost_tag=None,
 ):
-    
-    """Converts the requested boundaries into normalized timestamps"""
+    """
+    Merge matching historical runs into one validated dataset file.
+
+    Args:
+        ric: Underlying RIC, e.g. "AAPL.O".
+        start_date: Earliest decision date to include.
+        end_date: Latest decision date to include.
+        cost_tag: Optional transaction-cost tag; required if runs with
+            different tags exist.
+
+    Returns:
+        Path to the saved parquet file.
+
+    Raises:
+        ValueError: on invalid dates, missing columns, duplicates,
+            mixed cost tags, incompatible schemas or invalid outcome dates.
+    """
     
     # remove the time components, leaving only dates 
     start = pd.Timestamp(start_date).normalize()
@@ -108,8 +159,8 @@ def build_dataset(
 
     candidates = []
 
-    # every run requires two columns
-    # UNIQUE_COLUMNS and Outcome Date 
+    # every run must contain the four UNIQUE_COLUMNS 
+    # plus Outcome Date 
     required = set(
         UNIQUE_COLUMNS + ["Outcome Date"]
     )
@@ -165,7 +216,7 @@ def build_dataset(
             "No observations in the requested period."
         )
 
-    # ensures that a transaction-cost configuration was selected 
+    # ensures that all runs share exactly one transaction-cost tag 
     tags = {item["tag"] for item in candidates}
 
     # if runs with different transaction-cost tags are found, the script
@@ -177,8 +228,8 @@ def build_dataset(
         )
 
     # Prioritize runs with more observations.
-    # This puts the finalized 2022 run before
-    # its smaller development runs.
+    # Larger runs come first, so on overlaps 
+    # the larger run wins; ties are broken by path name
     candidates.sort(
         key=lambda item: (
             -len(item["data"]),
@@ -186,6 +237,8 @@ def build_dataset(
         )
     )
 
+    # schema of the largest run (first after sorting) 
+    # serves as the reference
     reference_schema = candidates[0]["schema"]
 
     # create a set for observation keys that have already been
@@ -197,7 +250,7 @@ def build_dataset(
         df = item["data"]
         path = item["path"]
 
-        # convert unique-column values into a MultiIndex
+        # builds a list of key tuples (RIC, date, horizon, strategy)
         keys = pd.MultiIndex.from_frame(
             df[UNIQUE_COLUMNS]
         ).tolist()
@@ -213,7 +266,7 @@ def build_dataset(
         # keeps only those new observations 
         new_df = df.loc[new_mask].copy()
 
-        # if the run completely overlapps, the run is skipped
+        # if the run completely overlaps, the run is skipped
         if new_df.empty:
             print(
                 f"Skipping overlapping run: "
@@ -321,9 +374,21 @@ def build_dataset(
 
 
 def main():
-    
+    """
+    Parse the command-line arguments and build the dataset.
+
+    Command-line arguments:
+        --ric:       Underlying RIC (required), e.g. AAPL.O
+        --start:     Earliest decision date (required), e.g. 2022-01-01
+        --end:       Latest decision date (required), e.g. 2023-12-31
+        --cost-tag:  Optional transaction-cost tag to select one
+                     configuration when several exist.
+
+    Returns:
+        None. The dataset is saved by build_dataset().
+    """
     # four arguments are defined
-    # the undelying RIC
+    # the underlying RIC
     # the earliest decision date
     # the latest decision date
     # optional transaction-cost configuration (not required)
