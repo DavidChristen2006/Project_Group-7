@@ -1,8 +1,8 @@
 """
-this code is an audit-script, which answers 
+This code is an audit-script, which answers 
 1. if all generated candidates were backtested, 
-2. which candidates are incomplete and why, 
-3. are reported P&L, return, and hedge-improvement values mathematically consistant 
+2. which candidates are incomplete, 
+3. are reported P&L, return, and hedge-improvement values mathematically consistent 
 4. and how did each strategy perform on each decision date
 
 the code only reads files and changes nothing 
@@ -16,7 +16,7 @@ import pandas as pd
 # configuration
 # Run_Name is a folder name of one specific run,
 # stock = Apple, date range = 2015-01-02 to 2015-06-01, horizon = H21 etc.
-# to audit a different run, just change this valaue  
+# to audit a different run, just change this value  
 
 RUN_NAME = (
     "AAPL_O_20150102_20150601_H21_S1000_K500_"
@@ -63,23 +63,23 @@ def main():
         None. Results are printed; no files are modified.
     """
 
-# load three parquet files 
+    # load three parquet files 
     inventory = pd.read_parquet(INVENTORY_PATH)
     results = pd.read_parquet(RESULT_PATH)
     coverage = pd.read_parquet(COVERAGE_PATH)
 
-# standardize the date column in all three tables 
-# converts the date values to pandas timestamps and removes time components with normalize()
+    # standardize the date column in all three tables 
+    # converts the date values to pandas timestamps and removes time components with normalize()
     for frame in (inventory, results, coverage):
         frame["Decision Date"] = pd.to_datetime(
             frame["Decision Date"]
         ).dt.normalize()
 
-# Check 1: where all candidates backtested?
+    # Check 1: where all candidates backtested?
 
     print("\n--- MONTHLY COVERAGE ---")
 
-# number of candidates per decision date: generated vs. completed 
+    # number of candidates per decision date: generated vs. completed 
     generated = inventory.groupby(
         "Decision Date"
     ).size().rename("Generated")
@@ -88,41 +88,41 @@ def main():
         "Decision Date"
     ).size().rename("Completed")
     
-# creates the DataFrame 'monthly' and put both counts side by side 
-# if no candidate is completed on a date fillna(0) handles it
+    # creates the DataFrame 'monthly' and put both counts side by side 
+    # if no candidate is completed on a date fillna(0) handles it
     monthly = pd.concat(
         [generated, completed],
         axis=1,
     ).fillna(0).astype(int)
 
-# calculates the imcomplete candidates and 
-# adds the column to the DataFrame
+    # calculates the incomplete candidates and 
+    # adds the column to the DataFrame
     monthly["Incomplete"] = (
         monthly["Generated"]
         - monthly["Completed"]
     )
 
-# calculates the completion rate (share of completed ones) and 
-# adds the column to the DataFrame
+    # calculates the completion rate (share of completed ones) and 
+    # adds the column to the DataFrame
     monthly["Completion Rate"] = (
         monthly["Completed"]
         / monthly["Generated"]
     )
 
-# prints the completion rate as a percentage value 
+    # prints the completion rate as a percentage value 
     print(
         monthly.to_string(
             float_format=lambda x: f"{x:.2%}"
         )
     )
 
-# Check 2: Which candidates are incomplete?
+    # Check 2: Which candidates are incomplete?
 
     print("\n--- INCOMPLETE CANDIDATES ---")
 
-# selects the rows in the DataFrame, where status is not "Complete" 
-# print how many are incomplete together with the decision date, strategy, candidate ID
-# status and reason 
+    # selects the rows in the DataFrame, where status is not "Complete" 
+    # print how many are incomplete together with the decision date, strategy, candidate ID
+    # status and reason 
     incomplete = coverage.loc[
         coverage["Status"] != "Complete"
     ].copy()
@@ -149,12 +149,12 @@ def main():
             )
         )
 
-# Check 3: is the accounting consistent? 
+    # Check 3: is the accounting consistent? 
 
     print("\n--- ACCOUNTING VALIDATION ---")
 
-# calculate expectations and compare with the sored value 
-# net p&l (p&l - transaction fees) 
+    # calculate expectations and compare with the stored value 
+    # net p&l (P&L minus transaction fees) 
     expected_pnl = (
         results["Gross Final P&L"]
         - results["Total Transaction Costs"]
@@ -165,7 +165,7 @@ def main():
         - expected_pnl
     ).abs()
 
-# expected returns (p&l devided by the invested capital)
+    # expected returns (P&L divided by the invested capital)
     expected_returns = (
         results["Final P&L"]
         / (
@@ -174,13 +174,13 @@ def main():
         )
     )
 
-# expected improvement (return with hedging - return without hedging)
+    # expected improvement (return with hedging minus return without hedging)
     expected_improvement = (
         results["Final Return"]
         - results["Unhedged Final Return"]
     )
 
-# np.allclose accepts tiny differences
+    # np.allclose accepts tiny differences
     assert np.allclose(
         results["Final P&L"],
         expected_pnl,
@@ -202,7 +202,7 @@ def main():
         atol=1e-8,
     ), "Hedge improvement reconciliation failed."
 
-# We only reach this point if all three assertions passed.
+    # We only reach this point if all three assertions passed.
     print(
         "Maximum P&L discrepancy:",
         f"{pnl_errors.max():.10f}",
@@ -211,15 +211,15 @@ def main():
     print("Return reconciliation: PASS")
     print("Hedge improvement reconciliation: PASS")
 
-# Check 4: Strategy decision per decision date
+    # Check 4: Strategy decision per decision date
     print("\n--- STRATEGY PERFORMANCE BY MONTH ---")
 
-# Group by (decision date, strategy) and compute three metrics per group:
-# Candidates       = number of candidates
-# Mean_Improvement = average hedge improvement
-#                    (positive = the hedge helped)
-# Mean_Drawdown    = average maximum drop from the peak
-#                    (more negative = riskier)
+    # Group by (decision date, strategy) and compute three metrics per group:
+    # Candidates       = number of candidates
+    # Mean_Improvement = average hedge improvement
+    #                    (positive = the hedge helped)
+    # Mean_Drawdown    = average maximum drop from the peak
+    #                    (more negative = riskier)
 
     strategy_monthly = (
         results.groupby(
