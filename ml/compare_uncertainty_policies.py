@@ -1,3 +1,22 @@
+"""Compare the original and the uncertainty-adjusted policy on matched decisions.
+
+Only decisions that are feasible under both policies are used, so both
+policies are judged on exactly the same decisions. For each model, the
+script reports the mean improvement, the mean drawdown, the share of
+decisions with a realized risk violation and the number of decisions
+where the selected strategy changed. Improvement and drawdown are in
+percentage points, the violation rate in percent.
+
+Run from project root:
+    py -m ml.<module_name> --evaluation-dir <folder>
+
+Reads:  uncertainty_comparison.parquet in the evaluation folder.
+Writes: uncertainty_matched_summary.csv in the evaluation folder.
+
+GenAI usage: Claude (Anthropic) was used to explain the code and to
+draft, review and correct comments and docstrings. The comments were
+checked and adapted by the author(s).
+"""
 
 import argparse
 from pathlib import Path
@@ -5,10 +24,25 @@ from pathlib import Path
 import pandas as pd
 
 
+# two folders above this file
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def main():
+    """Build and save the matched comparison of the two policies.
+
+    Command-line arguments:
+        --evaluation-dir: Folder with uncertainty_comparison.parquet
+            (required). A relative path is resolved from PROJECT_ROOT.
+
+    Raises:
+        ValueError: if no decision is feasible under both policies, or if
+            the policies cannot be paired one-to-one (raised by merge).
+
+    Side effects:
+        Prints the summary table and writes the summary CSV file.
+    """
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -20,6 +54,7 @@ def main():
 
     evaluation_dir = Path(args.evaluation_dir)
 
+    # relative paths are taken from the project root
     if not evaluation_dir.is_absolute():
         evaluation_dir = PROJECT_ROOT / evaluation_dir
 
@@ -29,6 +64,7 @@ def main():
 
     df = pd.read_parquet(path)
 
+    # one decision is identified by date, horizon and model
     keys = [
         "Decision Date",
         "Horizon",
@@ -43,6 +79,8 @@ def main():
         df["Policy"] == "Uncertainty Adjusted"
     ].copy()
 
+    # put both policies side by side, one row per decision;
+    # validate="one_to_one" fails if a decision occurs more than once
     paired = original.merge(
         adjusted,
         on=keys,
@@ -50,6 +88,8 @@ def main():
         validate="one_to_one",
     )
 
+    # keep only decisions that are feasible under both policies,
+    # so the comparison is fair
     paired = paired.loc[
         (paired["Status_Original"] == "Feasible")
         & (paired["Status_Adjusted"] == "Feasible")
@@ -62,6 +102,7 @@ def main():
 
     records = []
 
+    # one summary row per model and policy
     for model, group in paired.groupby("Model"):
         for policy, suffix in [
             ("Original", "Original"),
@@ -81,11 +122,15 @@ def main():
                         f"Actual Drawdown_{suffix}"
                     ].mean() * 100
                 ),
+                # share of decisions whose realized risk exceeded
+                # the allowed limit, in percent
                 "Violation Rate": (
                     group[
                         f"Realized Risk Violation_{suffix}"
                     ].astype(bool).mean() * 100
                 ),
+                # number of decisions where the two policies chose
+                # different strategies (same value in both rows)
                 "Changed Selections": (
                     (
                         group[
