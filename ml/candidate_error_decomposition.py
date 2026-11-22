@@ -17,7 +17,7 @@ The script also reports how often the realized utility was negative and
 how far out of the money the selected calls were.
 
 Run from project root:
-    py -m ml.<module_name>
+    py -m ml.candidate_error_decomposition
 
 Reads:  decisions from collect_decisions() and the dataset from
         load_dataset(); no command-line arguments.

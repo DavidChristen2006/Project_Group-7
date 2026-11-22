@@ -22,7 +22,7 @@ Procedure:
 All returns, sacrifices and utilities are in percentage points (pp).
 
 Run from project root:
-    py -m ml.<module_name>
+    py -m ml.candidate_upside_sacrifice_audit
 
 Reads:  dataset from load_dataset() and decisions from
         collect_decisions(); no command-line arguments.

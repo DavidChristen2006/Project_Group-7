@@ -20,7 +20,7 @@ Features, targets and metadata have the same row order: row i of every
 file describes the same candidate. Later scripts rely on this.
 
 Run from project root:
-    py -m ml.<module_name>
+    py -m ml.consolidate_candidate_cataset
 
 Reads:  candidate_ml_results.parquet of every matching experiment in
         ROOT / "candidate_backtests".

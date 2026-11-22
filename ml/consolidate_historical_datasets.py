@@ -17,7 +17,7 @@ Checks on the combined data:
     - every outcome date lies after its decision date
 
 Run from project root:
-    py -m ml.<module_name>
+    py -m ml.consolidate_historical_dataset
 
 Reads:  historical_ml_features.parquet in each run folder under
         RUNS_DIR.

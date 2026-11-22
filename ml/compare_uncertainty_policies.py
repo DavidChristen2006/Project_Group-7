@@ -8,7 +8,7 @@ where the selected strategy changed. Improvement and drawdown are in
 percentage points, the violation rate in percent.
 
 Run from project root:
-    py -m ml.<module_name> --evaluation-dir <folder>
+    py -m ml.compare_uncertainty_policies --evaluation-dir ml
 
 Reads:  uncertainty_comparison.parquet in the evaluation folder.
 Writes: uncertainty_matched_summary.csv in the evaluation folder.

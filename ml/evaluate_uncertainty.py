@@ -26,7 +26,7 @@ not changed. Improvement, drawdown and the violation and feasibility
 rates are shown in percentage points or percent.
 
 Run from project root:
-    py -m ml.<module_name> --evaluation-dir <folder> --dataset <file>
+    py -m ml.evaluate_uncertainty
 
 Reads:  the walk-forward predictions and the dataset, via load_data().
 Writes: uncertainty_comparison.parquet, uncertainty_summary.csv and

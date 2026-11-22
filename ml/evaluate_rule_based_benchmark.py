@@ -20,7 +20,7 @@ Returns and drawdowns are stored as fractions; the printed summary shows
 them in percentage points.
 
 Run from project root:
-    py -m ml.<module_name> --evaluation-dir <folder> --dataset <file>
+    py -m ml.evaluate_rule_based_benchmark
 
 Reads:  walk_forward_predictions.parquet in the evaluation folder and
         the consolidated historical ML dataset (--dataset).
