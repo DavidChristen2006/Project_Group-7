@@ -22,14 +22,21 @@ from pipeline.historical_ml_constraints import (
     filter_eligible_candidates,
 )
 
-
+# weight of the risk benefit in the utility; 
+# return = hedge improvement, risk benefit = drawdown improvement
+# predicted utility = predicted return + 0.5 x predicted risk benefit
+# realized utility = actual return + 0.5 x actual risk benefit 
 RISK_WEIGHT = 0.5
 
+# only hedge candidates satisfying these restrictions
+# call strike must be at least 5% out of the money
+# net premium/ debit cannot exceed 2%
 CONSTRAINTS = HedgeConstraints(
     min_call_otm_pct=0.05,
     max_net_debit_pct=0.02,
 )
 
+# decision dates with poor results whose contract details are printed 
 AUDIT_DATES = [
     pd.Timestamp("2024-05-01"),
     pd.Timestamp("2024-06-03"),
@@ -42,6 +49,12 @@ def evaluate_decision(
     predictions,
     risk_weight,
 ):
+    """core decision making function"""
+    
+    # add model predictions to the candidate 
+    # combines each candidate in test with that candidate's model
+    # prediction based on the Key, the predicted return and 
+    # the predicted risk benefit (risk reduction)
     scored = test.merge(
         predictions[
             [
@@ -55,28 +68,42 @@ def evaluate_decision(
         validate="one_to_one",
     )
 
+    # candidates that violate the configured hedge constraints
+    # are removed 
     eligible = filter_eligible_candidates(
         scored,
         CONSTRAINTS,
     ).copy()
 
+    # calculate predicted utility (one score from which candidates
+    # can be ranked)
     eligible["Predicted Utility"] = (
         eligible["Predicted Return"]
         + risk_weight
         * eligible["Predicted Risk Benefit"]
     )
 
+    # calculate realized utility based on historical outcomes 
     eligible["Realized Utility"] = (
         eligible["Hedge Improvement"]
         + risk_weight
         * eligible["Drawdown Improvement"]
     )
 
+    # sort candidates on highest predicted utility (first) and
+    # if tied alphabetically 
+    # the first row is therefore the model's preferred hedge 
     eligible = eligible.sort_values(
         ["Predicted Utility", "Candidate Key"],
         ascending=[False, True],
     )
 
+    # decide whether to hedge
+    # possible decisions are: 
+    # 1. No Hedge if there are no eligible candidates
+    # 2. No Hedge if the best candidates has predicted utility equal
+    # to or below zero
+    # 3. Otherwise, choose the highest-scoring eligible candidate
     if eligible.empty:
         chosen = None
     else:
@@ -88,7 +115,8 @@ def evaluate_decision(
         )
 
     # Retrospective best eligible alternative.
-    # It is NEVER used to choose the hedge.
+    # It is NEVER used to choose the hedge, because it would have 
+    # required knowing the outcomes beforehand (used for comparison)
     oracle = max(
         0.0,
         eligible["Realized Utility"].max()
@@ -96,6 +124,8 @@ def evaluate_decision(
         else 0.0,
     )
 
+    # returns a No Hedge record: predicted and actual values are 0, 
+    # oracle and regret are still computed  
     if chosen is None:
         return {
             "Decision": "No Hedge",
@@ -116,6 +146,12 @@ def evaluate_decision(
             "Eligible": len(eligible),
         }
 
+    # returns the record of the chosen hedge; all returns, risks 
+    # and utilities are converted to percentage points (fraction × 100) and 
+    # contains: strategy, candidate key, expiry, put/call strike percentages
+    # net premium, predicte return and risk, actaul return and risk,
+    # predicted and realized utility, oracle utility and 
+    # regret (oracle minus realized utility)
     return {
         "Decision": chosen["Strategy"],
         "Candidate Key": chosen["Candidate Key"],
@@ -167,8 +203,10 @@ def evaluate_decision(
 
 
 def main():
+    """function main"""
     parser = argparse.ArgumentParser()
 
+    # read the model argument 
     parser.add_argument(
         "--models",
         default="Random Forest,XGBoost",
@@ -181,11 +219,15 @@ def main():
         for value in args.models.split(",")
     ]
 
+    # validate that the model list contains no empty names 
     if not models or any(not name for name in models):
         raise ValueError("Invalid model list.")
 
+    # load the dataset into a pandas table 
     df = load_dataset()
 
+    # finds unique decision dates between 2024-01-01 and 2025-01-01
+    # the code therefore audits only 2024 (end date exclusive)
     dates = sorted(
         df.loc[
             (df["Decision Date"] >= "2024-01-01")
@@ -198,16 +240,21 @@ def main():
 
     print("\n--- CANDIDATE DECISION AUDIT ---")
 
+    # for each date, split the data and retrain each model 
+    # on past outcomes only 
     for date in dates:
         train, test, excluded = (
             get_walk_forward_split(df, date)
         )
 
+        # ensure that the test is not empty 
         if test.empty:
             raise ValueError(
                 f"Missing test candidates: {date}"
             )
 
+        # ensures that the training outcome happened before the 
+        # decision date 
         if not (
             train["Outcome Date"]
             < pd.Timestamp(date)
@@ -222,7 +269,9 @@ def main():
             f"candidates={len(test)}"
         )
 
+        # generate predictions and make decisions for every date and model
         for model in models:
+            # produce predictions for the test candidates 
             predictions = fit_predict(
                 model,
                 train,
@@ -230,6 +279,7 @@ def main():
                 NUMERIC_FEATURES.copy(),
             )
 
+            # evaluates the predictions and returns one decision record 
             result = evaluate_decision(
                 test,
                 predictions,
@@ -239,10 +289,13 @@ def main():
             result["Decision Date"] = date
             result["Model"] = model
 
+            # the result is added to records 
             records.append(result)
 
     results = pd.DataFrame(records)
 
+    # prevents duplicate recommendation records per decision date and
+    # model 
     if results.duplicated(
         ["Decision Date", "Model"]
     ).any():
@@ -250,6 +303,13 @@ def main():
             "Duplicate recommendation records."
         )
 
+    # the records are grouped by model:
+    # number of unique decision dates
+    # mean predicted utility
+    # mean actaul utility
+    # mean regret 
+    # the summary therefore shows how accurate and useful each model was
+    # but includes No Hedge months as well, which count as 0
     summary = (
         results.groupby("Model")
         .agg(
@@ -277,6 +337,8 @@ def main():
 
     print("\n--- MONTHLY RECOMMENDATIONS ---")
 
+    # defines a list of columns to display containing 
+    # date, model, decision, predicted utility, actual utility and regret 
     monthly_columns = [
         "Decision Date",
         "Model",
@@ -286,6 +348,7 @@ def main():
         "Regret (pp)",
     ]
 
+    # prints the table defined above 
     print(
         results[monthly_columns]
         .round(3)
@@ -294,12 +357,15 @@ def main():
 
     print("\n--- PROBLEMATIC MONTHS: CONTRACT DETAILS ---")
 
+    # for each date in AUDIT_DATES, the code prints the selected
+    # contract details 
     details = results.loc[
         results["Decision Date"].isin(
             AUDIT_DATES
         )
     ].copy()
 
+    # detailed contract
     detail_columns = [
         "Decision Date",
         "Model",
@@ -320,6 +386,7 @@ def main():
         "Regret (pp)",
     ]
 
+    # prints the exact hedge contract that was recommended 
     print(
         details[detail_columns]
         .round(3)
@@ -328,15 +395,24 @@ def main():
 
     print("\n--- PREDICTION ERRORS ---")
 
+    # analyze only actaul hedge selections where the decision 
+    # is not equal to "No Hedge"
     hedged = results.loc[
         results["Decision"] != "No Hedge"
     ].copy()
 
+    # calculate the utility forecast error and adds it to hedged
     hedged["Utility Forecast Error (pp)"] = (
         hedged["Actual Utility (pp)"]
         - hedged["Predicted Utility (pp)"]
     )
 
+    # for every model, the script calculate the
+    # average forecast error, the average absolute forecast error,
+    # the lowest or most overoptimistic error and the highest or most
+    # underestimating error 
+    # positive errors mean that the hedge performed better than forecast,
+    # negative errors mean that the hedge performed worse than forecast 
     print(
         hedged.groupby("Model")[
             "Utility Forecast Error (pp)"
