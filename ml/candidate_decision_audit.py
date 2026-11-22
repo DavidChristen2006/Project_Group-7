@@ -1,3 +1,23 @@
+"""Audit the monthly hedge decisions of ML models for 2024.
+
+For every decision date in 2024 and every model, the script trains the
+model on outcomes that were already known before that date (walk-forward),
+selects the eligible hedge candidate with the highest predicted utility
+(or "No Hedge" if that utility is not positive) and compares the result
+with the best eligible alternative in hindsight (oracle).
+
+Utility = hedge improvement + RISK_WEIGHT * drawdown improvement.
+
+Run from project root:
+    py -m ml.<module_name> --models "Random Forest,XGBoost"
+
+Reads:  dataset from load_dataset()
+Writes: nothing; results are printed only.
+
+GenAI usage: Claude (Anthropic) was used to explain the code and to
+draft, review and correct comments and docstrings. The comments were
+checked and adapted by the author(s).
+"""
 
 import argparse
 
@@ -49,7 +69,32 @@ def evaluate_decision(
     predictions,
     risk_weight,
 ):
-    """core decision making function"""
+    """Choose a hedge for one decision date and score the choice.
+
+    Merges the model predictions onto the candidates, removes candidates
+    violating CONSTRAINTS, ranks the rest by predicted utility and
+    picks the best one if its predicted utility is positive; otherwise
+    the decision is "No Hedge". The oracle (best realized utility among
+    the eligible candidates, at least 0) is used only for comparison.
+
+    Args:
+        test: DataFrame of candidates for one decision date, including
+            "Candidate Key", "Hedge Improvement" and
+            "Drawdown Improvement".
+        predictions: DataFrame with "Candidate Key", "Predicted Return"
+            and "Predicted Risk Benefit".
+        risk_weight: Weight of the risk benefit in the utility.
+
+    Returns:
+        Dict with the decision, contract details, predicted and actual
+        return, risk and utility, oracle utility, regret and the number
+        of eligible candidates. All values except "Eligible" are in
+        percentage points (fraction * 100). Regret is never negative.
+
+    Raises:
+        ValueError: if candidate keys are not one-to-one with the
+            predictions (raised by the merge).
+    """
     
     # add model predictions to the candidate 
     # combines each candidate in test with that candidate's model
@@ -101,7 +146,7 @@ def evaluate_decision(
     # decide whether to hedge
     # possible decisions are: 
     # 1. No Hedge if there are no eligible candidates
-    # 2. No Hedge if the best candidates has predicted utility equal
+    # 2. No Hedge if the best candidate has predicted utility equal
     # to or below zero
     # 3. Otherwise, choose the highest-scoring eligible candidate
     if eligible.empty:
@@ -149,7 +194,7 @@ def evaluate_decision(
     # returns the record of the chosen hedge; all returns, risks 
     # and utilities are converted to percentage points (fraction × 100) and 
     # contains: strategy, candidate key, expiry, put/call strike percentages
-    # net premium, predicte return and risk, actaul return and risk,
+    # net premium, predicte return and risk, actual return and risk,
     # predicted and realized utility, oracle utility and 
     # regret (oracle minus realized utility)
     return {
@@ -203,7 +248,23 @@ def evaluate_decision(
 
 
 def main():
-    """function main"""
+    """Run the 2024 walk-forward decision audit for the chosen models.
+
+    For each decision date in 2024 the data is split into training and
+    test candidates, every model is retrained on past outcomes only and
+    its decision is evaluated. Prints a model summary, the monthly
+    recommendations, contract details for AUDIT_DATES and the utility
+    forecast errors of the chosen hedges.
+
+    Command-line arguments:
+        --models: Comma-separated model names
+            (default "Random Forest,XGBoost").
+
+    Raises:
+        ValueError: if the model list is invalid, a date has no test
+            candidates, the training data contains unfinished outcomes
+            or duplicate records are found.
+    """
     parser = argparse.ArgumentParser()
 
     # read the model argument 
@@ -306,7 +367,7 @@ def main():
     # the records are grouped by model:
     # number of unique decision dates
     # mean predicted utility
-    # mean actaul utility
+    # mean actual utility
     # mean regret 
     # the summary therefore shows how accurate and useful each model was
     # but includes No Hedge months as well, which count as 0
@@ -395,7 +456,7 @@ def main():
 
     print("\n--- PREDICTION ERRORS ---")
 
-    # analyze only actaul hedge selections where the decision 
+    # analyze only actual hedge selections where the decision 
     # is not equal to "No Hedge"
     hedged = results.loc[
         results["Decision"] != "No Hedge"
