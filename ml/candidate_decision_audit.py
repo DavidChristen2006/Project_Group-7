@@ -194,7 +194,7 @@ def evaluate_decision(
     # returns the record of the chosen hedge; all returns, risks 
     # and utilities are converted to percentage points (fraction × 100) and 
     # contains: strategy, candidate key, expiry, put/call strike percentages
-    # net premium, predicte return and risk, actual return and risk,
+    # net premium, predicted return and risk, actual return and risk,
     # predicted and realized utility, oracle utility and 
     # regret (oracle minus realized utility)
     return {
@@ -462,13 +462,13 @@ def main():
         results["Decision"] != "No Hedge"
     ].copy()
 
-    # calculate the utility forecast error and adds it to hedged
+    # calculates the utility forecast error and adds it to hedged
     hedged["Utility Forecast Error (pp)"] = (
         hedged["Actual Utility (pp)"]
         - hedged["Predicted Utility (pp)"]
     )
 
-    # for every model, the script calculate the
+    # for every model, the script calculates the
     # average forecast error, the average absolute forecast error,
     # the lowest or most overoptimistic error and the highest or most
     # underestimating error 
