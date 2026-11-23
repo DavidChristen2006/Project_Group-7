@@ -1,3 +1,11 @@
+"""Price options and simulate portfolio hedging strategies
+
+Input:
+Historical prices or paired returns, position and option details, valuation dates, horizons, annual rates, and simulation settings
+
+Output:
+Option values, maximum drawdowns, simulated portfolio paths, and strategy comparison summaries
+"""
 
 import numpy as np
 import pandas as pd
@@ -13,6 +21,14 @@ def black_scholes_put(
     dividend_yield,
     volatility
 ):
+    """Price a European put using the Black-Scholes-Merton model
+    
+    Input:
+    Stock price, strike, expiry in years, annual risk-free and dividend rates, and annual volatility, with rates and volatility as decimals 
+
+    Output:
+    Non-negative theoretical put price per share 
+    """
     if time_to_expiry <= 0:
         return max(strike - stock_price, 0.0)
 
@@ -47,6 +63,14 @@ def black_scholes_put(
 
 
 def calculate_max_drawdown(portfolio_values):
+    """Calculate the largest peak-to-trough decline in portfolio value
+    
+    Input: 
+    Sequence of positive portfolio values; missing entires are removed 
+
+    Output:
+    Drawdown as a nonpositive decimal, or NaN if no value remain
+    """
     values = pd.Series(
         portfolio_values,
         dtype=float
@@ -80,6 +104,14 @@ def protective_put_portfolio_backtest(
     risk_free_rate,
     dividend_yield
 ):
+    """Replay recent historical returns fro a stock protected by a put
+    
+    Input:
+    Stock price history, current position, put terms and premium, valuation/expiry dates, horison in business-day steps, and annual rates
+
+    Output:
+    Dictionary containing backtest_df with prices, values, returns, and drawdowns incl. metrics comparing hedged and unhedfed results 
+    """
     prices = pd.to_numeric(
         pd.Series(historical_prices),
         errors="coerce"
@@ -229,6 +261,14 @@ def black_scholes_call(
     dividend_yield,
     volatility
 ):
+    """Price a European call using the Black-Scholes-Merton model
+    
+    Input: 
+    Stock price, stirke, expiry in years, annual risk-free and dividend rates, and annual volatility, with rates and volatility as decimals
+
+    Output:
+    Non-negative theoretical call price per share 
+    """
     if time_to_expiry <= 0:
         return max(stock_price - strike, 0.0)
 
@@ -274,6 +314,14 @@ def option_strategy_path_simulation(
     strategy_name, 
     scenario_returns=None
 ):
+    """Simualte a stock postion with long and/or short option legs
+    
+    Input:
+    Price history, position, dates, horizon, annual rates, strategy name, and optional daily scenario returns. Each leg supplies type (put/call), side (1 long, -1 short), strike, premium per share, iv, and expiry. 
+
+    Output:
+    Dictionary containing backtest_df with portfolio values and returns, plus maximum-drawdown and final-return metrics 
+    """
     prices = pd.to_numeric(
         pd.Series(historical_prices),
         errors="coerce"
@@ -442,6 +490,14 @@ def simulate_multiple_hedge_paths(
     block_size=5,
     random_seed=42
 ):
+    """Compare option strategies across block-resampled stock-return paths
+    
+    Input: 
+    Stock price history, position, strategy-to-leg mapping, dates, horizon, annual rates, simulation count, block size, and random seed. 
+
+    Output:
+    Dictionary with simulation_df of drawdowns and final returns, and summary_df of strategy medians
+    """
     prices = pd.to_numeric(
         pd.Series(historical_prices),
         errors="coerce"
@@ -576,6 +632,14 @@ def calibrated_option_value(
     risk_free_rate,
     dividend_yield
 ):
+    """Adjust an option model value to its initial market premium
+    
+    Input:
+    Option type, current/initial stock prices, strike, market premium, volatility, expiry/valuation/current dates, and annual rates
+
+    Output:
+    Non-negative option value per share with an entry-price adjustment that fades linearly to zero at expiry 
+    """
     pricing_function = (
         black_scholes_put
         if option_type == "put"
@@ -633,6 +697,14 @@ def simulate_cross_hedge_paths(
     block_size=10,
     random_seed=42
 ):
+    """Compare unhedged and daily-rebalanced cross-hedge return paths
+    
+    Input: 
+    DataFrame with paired "Stock Return" and "Hedge Return" columns, hedge beta/ratio, simulatino count, horizon, block size, and random seed
+
+    Output:
+    Dictionary with simulation_df of drawdowns and final returns, and summary_df of strategy medians and lower 5%
+    """
     paired_returns = (
         cross_hedge_returns[
             ["Stock Return", "Hedge Return"]
@@ -751,6 +823,14 @@ def simulate_unified_hedge_paths(
     block_size=10,
     random_seed=42
 ):
+    """Compare unhedge, cross-hedge, and option strategies on shared paths
+    
+    Input:
+    Price history, paired stock/hedge returns, position, option strategies, beta/ratio, dates, horizon, rates, and block-resampling settings. The cross hedge uses daily-rebalanced returns.
+
+    Output:
+    Dictionary with simulation_df of strategy results and summary_df of median outcomes, lower 5% and tail-average final returns
+    """
     required_columns = ["Stock Return", "Hedge Return"]
 
     paired = paired_returns[required_columns].copy()
@@ -900,6 +980,14 @@ def simulate_unified_hedge_paths(
     simulation_df = pd.DataFrame(strategy_results)
 
     def calculate_cvar(series, alpha=0.05):
+        """Average returns at or below the selected lower-tail quantile (*cut point that divides a sorted dataset into equal sizes) 
+        
+        Input: 
+        Return Series and tail fraction alpha (default: 0.05)
+
+        Output: 
+        Mean tail return as a float; NaN if no returns are selcted 
+        """
         cutoff = series.quantile(alpha)
         return float(series[series <= cutoff].mean())
 
