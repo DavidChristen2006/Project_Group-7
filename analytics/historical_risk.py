@@ -1,6 +1,23 @@
+"""Analyse historical drawdowns and their effect on a stock position
+
+Input: 
+Price history with "Close" and "Drawdown" columns, and shares held 
+
+Output:
+Drawdown, position P&L, and recovery statistics
+"""
+
 def analyze_historical_risk(
     history,
     shares):
+    """Measure the largest recorded drawdown and subsequent recovery.
+
+    Input:
+    Chronologically ordered, date-indexed DataFrame with "Close" and precomputed "Drawdown" columns, and the number of shares held
+
+    Output: 
+    Dictionary with drawdown, peak/trough details, position P&L, and recovery timing; recovery values are None if no recovery occurs
+    """
     max_drawdown = history["Drawdown"].min()
     max_drawdown_date = history["Drawdown"].idxmin()
     peak_date = history.loc[:max_drawdown_date, "Close"].idxmax()
