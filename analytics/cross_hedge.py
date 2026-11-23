@@ -1,7 +1,24 @@
+"""Comparing cross-hedge candidates and laod their historical prices. 
+
+Input: 
+Stock and hedge price histories, hedge RICs, dates and a history loader. 
+
+Output: 
+A ranked hedge comparaison and a directionary of available price histories 
+"""
+
 import pandas as pd
 
 from analytics.beta import estimate_beta
 
+"""Compare candidate hedge assets using historical return statistics.
+
+Input: 
+Stock price DataFrame and a dictionary of hedge price DataFrames, each containing a "close" column 
+
+Output:
+DataFrame of hedge metrics, sorted by descedning R-squared and then desceding correlation
+"""
 def compare_cross_hedge_candidates(
     stock_history,
     hedge_histories):
@@ -30,6 +47,14 @@ def compare_cross_hedge_candidates(
         ascending=[False, False])
     return results_df
 
+"""Load historical prices for candidate hedge insturments
+
+Input: 
+Hedge RICs, start/end dates, and a price-history laoder function. 
+
+Output: 
+Dicitionary mapping RICs to nonempty price histories (empty results and failed requests are skipped)
+"""
 def load_cross_hedge_histories(hedge_rics, start_date, end_date, history_loader):
     histories = {}
     for ric in hedge_rics:
