@@ -1,3 +1,12 @@
+"""Prepare machine-learning data from evaluated hedge strategies 
+
+Input: 
+Postion, company and market data, historical risk, strategy metrics and optinoal hedge settings and option data
+
+Output:
+A pandas DataFrame iwth one row per strategy 
+"""
+
 import pandas as pd
 
 def build_ml_rows(
@@ -13,6 +22,14 @@ def build_ml_rows(
     spread_long_put=None,
     spread_short_put=None,
     cross_hedge_ric=None):
+    """Combine investment and hedge information into dataset rows
+
+    Input:
+    Position, metadata, market and historical risk data, strategy metrics, and optional hedge settings, selected options and cross-hedge RIC
+
+    Output:
+    DataFrame of strategy features and perfomrance metrics, with one row per strategy
+    """
     rows = []
 
     for _, strategy_row in strategy_metrics_df.iterrows():
