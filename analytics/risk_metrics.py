@@ -1,9 +1,26 @@
+"""Calculates historical risk and return metrics 
+
+Input:
+Return series and settings for confidence level and annualisation
+
+Output:
+VaR, CVaR, maximum drawdown, volatiltiy, and return summaries
+"""
+
 import numpy as np
 
 def calculate_var(
     returns,
     confidence_level=0.95
 ):
+    """Calculate the historical Value at Risk (VaR) return threshold 
+    
+    Input:
+    Return Series and confidence level (default: 0.95)
+
+    Output:
+    Lower-tail return percentile (at 95% confidence)
+    """
     clean_returns = returns.dropna()
 
     percentile = (
@@ -19,6 +36,14 @@ def calculate_cvar(
     returns,
     confidence_level=0.95
 ):
+    """Calculate the average return in the lower tail/part 
+    
+    Input:
+    Return Series and confidence level (default: 0.95)
+
+    Output:
+    Mean return at or below the VaR threshold, or VaR if the tail/lower part is empty 
+    """
     clean_returns = returns.dropna()
 
     var = calculate_var(
@@ -39,6 +64,14 @@ def calculate_cvar(
 def calculate_max_drawdown(
     returns
 ):
+    """Calculate the largest decline from previous cumulative wealth peak
+    
+    Input:
+    Chronologically ordered return Series, expressed as decimals
+
+    Output:
+    Maximum drawdown as a nonpositive decimal 
+    """
     clean_returns = returns.dropna()
 
     wealth_index = (
@@ -64,6 +97,14 @@ def calculate_return_metrics(
     periods_per_year=252,
     calculate_drawdown=True
 ):
+    """Combine historical risk and return measures. 
+    
+    Input:
+    Return Series, confidence level, periods per year, and a flag controlling whether maximum drawdown is calculated 
+
+    Output: 
+    Dictionary containing annualised volatility, VaR, CVaR, maximum drawdonw, worst return, and average return. Maximum drawdown is NaN when its calculation is disabled 
+    """
     clean_returns = returns.dropna()
 
     annualized_volatility = (
