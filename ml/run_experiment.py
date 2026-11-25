@@ -1,3 +1,9 @@
+"""ml/run_experiment.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 
 import argparse
 import subprocess
@@ -13,6 +19,11 @@ from ml.automatic_dataset import (
 
 
 def run_command(command):
+    """Perform the run command operation for this research workflow.
+
+    Args:
+        command: Input to the run_command operation.
+    """
     subprocess.run(
         command,
         cwd=PROJECT_ROOT,
@@ -31,6 +42,22 @@ def run_experiment(
     shares=1000,
     horizons=None,
 ):
+    """Perform the run experiment operation for this research workflow.
+
+    Args:
+        ric: Input to the run_experiment operation.
+        start_date: Input to the run_experiment operation.
+        end_date: Input to the run_experiment operation.
+        test_start: Input to the run_experiment operation.
+        cost_tag: Input to the run_experiment operation.
+        download_start: Input to the run_experiment operation.
+        download_end: Input to the run_experiment operation.
+        shares: Input to the run_experiment operation.
+        horizons: Input to the run_experiment operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     start = pd.Timestamp(start_date).normalize()
     end = pd.Timestamp(end_date).normalize()
     test = pd.Timestamp(test_start).normalize()
@@ -151,6 +178,8 @@ def run_experiment(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Run historical hedging data collection, "

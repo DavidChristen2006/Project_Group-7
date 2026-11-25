@@ -14,7 +14,7 @@ import pandas as pd
 from lseg.data.content import symbol_conversion
 
 
-ROOT = Path("data/processed/etf_universe")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed/etf_universe")
 SOURCE = ROOT / "isin_bootstrap" / "etf_instruments_with_isin.parquet"
 OUTPUT = ROOT / "ric_verification"
 
@@ -79,6 +79,14 @@ CANDIDATE_COLUMNS = [
 
 
 def clean(value):
+    """Perform the clean operation for this research workflow.
+
+    Args:
+        value: Input to the clean operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if value is None or pd.isna(value):
         return ""
 
@@ -93,6 +101,14 @@ def clean(value):
 
 
 def ric_ticker(ric):
+    """Perform the ric ticker operation for this research workflow.
+
+    Args:
+        ric: Input to the ric_ticker operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return (
         clean(ric)
         .split(".", 1)[0]
@@ -102,6 +118,16 @@ def ric_ticker(ric):
 
 
 def venue_matches(venue, exchange_name, exchange_code):
+    """Perform the venue matches operation for this research workflow.
+
+    Args:
+        venue: Input to the venue_matches operation.
+        exchange_name: Input to the venue_matches operation.
+        exchange_code: Input to the venue_matches operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     venue = clean(venue).upper()
     name = clean(exchange_name).lower()
     code = clean(exchange_code).upper()
@@ -558,6 +584,8 @@ def assemble(universe, candidates):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser()
 
     mode = parser.add_mutually_exclusive_group(

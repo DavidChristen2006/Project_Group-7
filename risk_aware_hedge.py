@@ -54,6 +54,15 @@ EXTENDED_FEATURES = list(base.FEATURES) + list(RISK_FEATURES)
 
 
 def price_history(conn, ric):
+    """Perform the price history operation for this research workflow.
+
+    Args:
+        conn: Input to the price_history operation.
+        ric: Input to the price_history operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = pd.read_sql_query(
         "SELECT date, close FROM prices "
         "WHERE ric=? AND mode='adjusted' ORDER BY date",
@@ -258,6 +267,16 @@ def estimators(enhanced):
 
 
 def predict(model, frame, enhanced):
+    """Perform the predict operation for this research workflow.
+
+    Args:
+        model: Input to the predict operation.
+        frame: Input to the predict operation.
+        enhanced: Input to the predict operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     fields = (
         EXTENDED_FEATURES
         if enhanced
@@ -360,6 +379,8 @@ def evaluate(train, evaluation, phase):
 
 
 def train():
+    """Perform the train operation for this research workflow.
+    """
     df = base.prepare(
         pd.read_parquet(base.SOURCE)
     )
@@ -925,6 +946,19 @@ def render_recommendation(snapshot, appetite):
         "The No Hedge baseline has zero incremental effect."
     )
 
+    # Compare all available model predictions visually. The selected policy
+    # and validation safeguard are unchanged by this graphical display.
+    from dashboard_visuals import model_ranking_chart
+
+    st.plotly_chart(
+        model_ranking_chart(
+            comparison, metric="Utility (pp)",
+            title="Nine-model predicted hedging utility (pp)",
+        ),
+        use_container_width=True,
+        key="live_nine_model_utility",
+    )
+
     # --------------------------------------------------
     # 2. The actual hedge the ML prefers
     # --------------------------------------------------
@@ -1118,6 +1152,8 @@ def render_recommendation(snapshot, appetite):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__,
     )

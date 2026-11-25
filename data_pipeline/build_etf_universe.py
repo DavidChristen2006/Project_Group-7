@@ -17,11 +17,11 @@ from pathlib import Path
 import pandas as pd
 
 
-ROOT = Path("data/processed/ever_member_universe")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed/ever_member_universe")
 
 DATE_FILE = ROOT / "research_decision_dates.csv"
 
-OUTPUT = Path("data/processed/etf_universe")
+OUTPUT = (Path(__file__).resolve().parents[1] / "data/processed/etf_universe")
 
 
 def etf(
@@ -136,6 +136,11 @@ ETFS = [
 
 
 def load_decision_dates():
+    """Load decision dates from stored research artifacts.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     dates = pd.read_csv(
         DATE_FILE,
         parse_dates=["Decision Date"],
@@ -159,6 +164,11 @@ def load_decision_dates():
 
 
 def build_etf_master():
+    """Construct etf master from the supplied inputs.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     master = pd.DataFrame(ETFS)
 
     master["Listing ID"] = (
@@ -193,6 +203,15 @@ def build_etf_master():
 
 
 def build_collection_grid(master, dates):
+    """Construct collection grid from the supplied inputs.
+
+    Args:
+        master: Input to the build_collection_grid operation.
+        dates: Input to the build_collection_grid operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     grid = pd.MultiIndex.from_product(
         [
             dates,
@@ -236,6 +255,8 @@ def build_collection_grid(master, dates):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     print("\n--- ETF RESEARCH UNIVERSE ---")
 
     master = build_etf_master()

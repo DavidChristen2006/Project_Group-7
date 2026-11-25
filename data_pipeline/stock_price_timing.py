@@ -19,6 +19,8 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class StockPriceTiming:
+    """Represent StockPriceTiming within the hedge research workflow.
+    """
     value: float
     source: str
     price_date: date | None
@@ -207,6 +209,14 @@ def stock_time_evidence(
         clock: str | None,
     ) -> float | None:
 
+        """Perform the clock lag operation for this research workflow.
+
+        Args:
+            clock: Input to the clock_lag operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         if clock is None or pd.isna(received):
             return None
 

@@ -43,6 +43,14 @@ def _checked_panel(
     details: pd.DataFrame,
 ) -> pd.DataFrame:
 
+    """Handle the internal checked panel step.
+
+    Args:
+        details: Input to the _checked_panel operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if (
         not isinstance(details, pd.DataFrame)
         or details.empty
@@ -227,6 +235,18 @@ def _segment_stats(
     downside_weight: float,
 ) -> list[dict]:
 
+    """Handle the internal segment stats step.
+
+    Args:
+        panel: Input to the _segment_stats operation.
+        label: Input to the _segment_stats operation.
+        kind: Input to the _segment_stats operation.
+        stock_notional: Input to the _segment_stats operation.
+        downside_weight: Input to the _segment_stats operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     rows = []
 
     for strategy, group in panel.groupby(

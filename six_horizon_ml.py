@@ -787,6 +787,14 @@ def train():
 
 @lru_cache(maxsize=18)
 def _trusted_model(filename):
+    """Handle the internal trusted model step.
+
+    Args:
+        filename: Input to the _trusted_model operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return joblib.load(filename)
 
 

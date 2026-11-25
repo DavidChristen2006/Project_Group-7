@@ -1,42 +1,9 @@
-"""Compare original and uncertainty-adjusted hedging recommendations.
+"""ml/evaluate_uncertainty.py: hedge research implementation.
 
-The recommendation policy only accepts hedges whose predicted maximum
-drawdown stays within a risk limit. If the models underestimate the
-drawdown, this limit is violated more often than expected. This script
-tests whether making the drawdown predictions more cautious reduces such
-violations.
-
-Procedure:
-    1. For each decision date, horizon and model, measure how wrong the
-       model's earlier drawdown predictions were (predicted minus
-       actual; positive = the drawdown was worse than predicted). Only
-       predictions whose outcome was already known before the decision
-       date are used.
-    2. Set the risk margin to the chosen quantile (--confidence) of
-       these errors, but not below 0, and subtract it from the
-       predicted drawdown. With fewer than --min-samples earlier
-       predictions, the prediction stays unchanged (margin 0).
-    3. Run the recommendation policy once with the original and once
-       with the adjusted predictions.
-    4. Summarize feasibility, realized improvement, realized drawdown
-       and the rate of risk violations per model and policy.
-
-Only maximum-drawdown predictions are adjusted; return predictions are
-not changed. Improvement, drawdown and the violation and feasibility
-rates are shown in percentage points or percent.
-
-Run from project root:
-    py -m ml.evaluate_uncertainty
-
-Reads:  the walk-forward predictions and the dataset, via load_data().
-Writes: uncertainty_comparison.parquet, uncertainty_summary.csv and
-        uncertainty_calibration.csv in the evaluation folder. The
-        parquet file is the input of the matched-comparison script.
-
-GenAI usage: Claude (Anthropic) was used to explain the code and to
-draft, review and correct comments and docstrings. The comments were
-checked and adapted by the author(s).
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
 """
+
 
 import argparse
 from pathlib import Path
@@ -44,10 +11,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# PROJECT_ROOT = project folder; KEY_COLUMNS = columns that identify a
-# decision (date and horizon); TARGET_RISK = name of the drawdown
-# target; load_data() loads predictions and unhedged results;
-# evaluate_policy() applies the recommendation policy
 from ml.risk_return_recommender import (
     PROJECT_ROOT,
     KEY_COLUMNS,
@@ -58,16 +21,14 @@ from ml.risk_return_recommender import (
 
 
 def resolve_path(path):
-    """Turn a relative path into a path inside the project.
+    """Perform the resolve path operation for this research workflow.
 
     Args:
-        path: Absolute or relative path (string or Path).
+        path: Input to the resolve_path operation.
 
     Returns:
-        The path itself if it is absolute, otherwise the path relative
-        to PROJECT_ROOT.
+        Computed result or status for the caller.
     """
-
     path = Path(path)
     if path.is_absolute():
         return path
@@ -80,39 +41,17 @@ def adjust_risk_predictions(
     confidence=0.90,
     min_samples=10,
 ):
-    """Make the drawdown predictions more cautious using past errors.
-
-    For each decision date, horizon and model, the margin is the
-    confidence quantile of the adverse errors (predicted minus actual
-    drawdown) of earlier predictions of the same model and horizon, but
-    at least 0. Only predictions with a decision date and an outcome
-    date before the current decision date are used, so no future
-    information enters the margin. The margin is subtracted from the
-    predicted drawdown. The errors of all strategies are pooled.
+    """Perform the adjust risk predictions operation for this research workflow.
 
     Args:
-        predictions: DataFrame of walk-forward predictions with the
-            columns "Target", "Model", "Predicted", "Actual", the
-            decision date and the horizon.
-        unhedged: DataFrame with the validated "Outcome Date" for each
-            decision date and horizon.
-        confidence: Quantile of the adverse errors used as margin
-            (default 0.90).
-        min_samples: Minimum number of earlier prediction rows needed
-            for a calibration (default 10). Rows, not decisions, are
-            counted: each decision has one row per strategy.
+        predictions: Input to the adjust_risk_predictions operation.
+        unhedged: Input to the adjust_risk_predictions operation.
+        confidence: Input to the adjust_risk_predictions operation.
+        min_samples: Input to the adjust_risk_predictions operation.
 
     Returns:
-        Tuple (adjusted, calibration). adjusted is a copy of the
-        predictions with adjusted drawdown predictions. calibration is
-        a DataFrame with one row per decision date, horizon and model:
-        number of calibration samples, whether a calibration was done
-        and the risk margin that was applied.
-
-    Raises:
-        ValueError: if an outcome date is missing for a risk prediction.
+        Computed result or status for the caller.
     """
-
     adjusted = predictions.copy()
 
     # Only maximum-drawdown forecasts are calibrated.
@@ -129,8 +68,6 @@ def adjust_risk_predictions(
         errors="ignore",
     )
 
-    # many_to_one: several strategies share one decision, but each
-    # decision has exactly one outcome date
     risk_rows = risk_rows.merge(
         unhedged[KEY_COLUMNS + ["Outcome Date"]],
         on=KEY_COLUMNS,
@@ -175,9 +112,6 @@ def adjust_risk_predictions(
         calibrated = count >= min_samples
 
         if calibrated:
-            # quantile of the past errors; negative values are cut off
-            # because the adjustment must never make a prediction
-            # less cautious
             margin = max(
                 0.0,
                 float(
@@ -192,8 +126,6 @@ def adjust_risk_predictions(
             # there is insufficient calibration data.
             margin = 0.0
 
-        # select the prediction rows of this decision, horizon and
-        # model, and subtract the margin from the predicted drawdown
         mask = (
             (adjusted["Decision Date"] == date)
             & (
@@ -229,27 +161,18 @@ def evaluate_comparison(
     confidence,
     min_samples,
 ):
-    """Run the recommendation policy with original and adjusted predictions.
+    """Perform the evaluate comparison operation for this research workflow.
 
     Args:
-        predictions: DataFrame of walk-forward predictions.
-        unhedged: DataFrame with the unhedged results and outcome dates.
-        risk_limit: Maximum drawdown limit for a recommended hedge,
-            passed to evaluate_policy().
-        confidence: Quantile used for the risk margin.
-        min_samples: Minimum number of earlier prediction rows needed
-            for a calibration.
+        predictions: Input to the evaluate_comparison operation.
+        unhedged: Input to the evaluate_comparison operation.
+        risk_limit: Input to the evaluate_comparison operation.
+        confidence: Input to the evaluate_comparison operation.
+        min_samples: Input to the evaluate_comparison operation.
 
     Returns:
-        Tuple (details, summary, calibration). details has one row per
-        decision and policy ("Original" or "Uncertainty Adjusted") with
-        the calibration data. summary has one row per model and policy:
-        decisions, feasible decisions, calibrated decisions, mean
-        improvement and drawdown (percentage points) and violation and
-        feasibility rates (percent). calibration is the table from
-        adjust_risk_predictions().
+        Computed result or status for the caller.
     """
-
     adjusted, calibration = adjust_risk_predictions(
         predictions,
         unhedged,
@@ -278,7 +201,6 @@ def evaluate_comparison(
         ignore_index=True,
     )
 
-    # attach the margin that was used for each decision
     details = details.merge(
         calibration,
         on=["Decision Date", "Horizon", "Model"],
@@ -316,14 +238,12 @@ def evaluate_comparison(
         .reset_index()
     )
 
-    # share of decisions with a feasible recommendation, in percent
     summary["Feasibility_Rate"] = (
         summary["Feasible"]
         / summary["Decisions"]
         * 100
     )
 
-    # convert fractions into percentage points or percent
     for column in [
         "Mean_Improvement",
         "Mean_Drawdown",
@@ -338,31 +258,8 @@ def evaluate_comparison(
 
 
 def main():
-    """Compare the original and the uncertainty-adjusted policy.
-
-    Reads and validates the arguments, loads the data, runs the
-    comparison, prints the summary and saves the results.
-
-    Command-line arguments:
-        --evaluation-dir: Folder with the walk-forward predictions;
-            results are saved here too (required).
-        --dataset: Consolidated historical ML dataset (required).
-        --max-drawdown: Drawdown limit as a fraction (default 0.10,
-            allowed range above 0 up to 1).
-        --confidence: Quantile of past errors used as margin
-            (default 0.90, allowed range between 0 and 1).
-        --min-samples: Minimum number of earlier prediction rows for a
-            calibration (default 10, at least 1).
-
-    Raises:
-        ValueError: if an argument is outside its allowed range or the
-            data is inconsistent (raised by the called functions).
-
-    Side effects:
-        Prints the summary and writes three result files to the
-        evaluation folder.
+    """Run the module entry point and its workflow.
     """
-
     parser = argparse.ArgumentParser(
         description=(
             "Compare original and uncertainty-adjusted "
@@ -400,7 +297,6 @@ def main():
 
     args = parser.parse_args()
 
-    # reject values that would make the calculation meaningless
     if not 0 < args.max_drawdown <= 1:
         raise ValueError("Invalid drawdown limit.")
 

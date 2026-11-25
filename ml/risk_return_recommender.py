@@ -1,3 +1,9 @@
+"""ml/risk_return_recommender.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 
 import argparse
 from pathlib import Path
@@ -18,11 +24,28 @@ KEY_COLUMNS = [
 
 
 def resolve_path(path):
+    """Perform the resolve path operation for this research workflow.
+
+    Args:
+        path: Input to the resolve_path operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def load_data(evaluation_dir, dataset_path):
+    """Load data from stored research artifacts.
+
+    Args:
+        evaluation_dir: Input to the load_data operation.
+        dataset_path: Input to the load_data operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     predictions = pd.read_parquet(
         evaluation_dir / "walk_forward_predictions.parquet"
     ).copy()
@@ -118,6 +141,16 @@ def historical_no_hedge_forecast(
     decision_date,
     horizon,
 ):
+    """Perform the historical no hedge forecast operation for this research workflow.
+
+    Args:
+        unhedged: Input to the historical_no_hedge_forecast operation.
+        decision_date: Input to the historical_no_hedge_forecast operation.
+        horizon: Input to the historical_no_hedge_forecast operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     history = unhedged.loc[
         (unhedged["Hedge Horizon Days"] == horizon)
         & (unhedged["Outcome Date"] < decision_date)
@@ -139,6 +172,16 @@ def evaluate_policy(
     unhedged,
     maximum_drawdown,
 ):
+    """Perform the evaluate policy operation for this research workflow.
+
+    Args:
+        predictions: Input to the evaluate_policy operation.
+        unhedged: Input to the evaluate_policy operation.
+        maximum_drawdown: Input to the evaluate_policy operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     records = []
 
     groups = predictions.groupby(
@@ -328,6 +371,14 @@ def evaluate_policy(
 
 
 def summarize_results(results):
+    """Perform the summarize results operation for this research workflow.
+
+    Args:
+        results: Input to the summarize_results operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     summary = (
         results.groupby("Model")
         .agg(
@@ -363,6 +414,8 @@ def summarize_results(results):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument(

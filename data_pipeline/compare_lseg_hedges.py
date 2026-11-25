@@ -380,6 +380,11 @@ def choose_pair(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )
@@ -648,6 +653,14 @@ def main() -> None:
         row: pd.Series,
     ) -> dict:
 
+        """Perform the quote info operation for this research workflow.
+
+        Args:
+            row: Input to the quote_info operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         date_value = row.get(
             "QuoteDate",
             None,

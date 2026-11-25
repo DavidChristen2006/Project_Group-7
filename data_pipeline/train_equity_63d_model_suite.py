@@ -611,6 +611,8 @@ def evaluate_target(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

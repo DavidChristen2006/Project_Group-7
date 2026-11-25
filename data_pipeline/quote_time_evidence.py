@@ -16,6 +16,14 @@ import pandas as pd
 
 def _utc_clock_seconds(value: object) -> float | None:
 
+    """Handle the internal utc clock seconds step.
+
+    Args:
+        value: Input to the _utc_clock_seconds operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if value is None:
         return None
 

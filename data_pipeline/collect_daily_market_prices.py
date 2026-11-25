@@ -16,7 +16,7 @@ import lseg.data as ld
 import pandas as pd
 
 
-ROOT = Path("data/processed")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed")
 
 ETF_FILE = (
     ROOT
@@ -76,6 +76,14 @@ PAUSE_SECONDS = 0.3
 
 
 def clean(value):
+    """Perform the clean operation for this research workflow.
+
+    Args:
+        value: Input to the clean operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if value is None or pd.isna(value):
         return ""
 
@@ -83,6 +91,14 @@ def clean(value):
 
 
 def unique_rics(items):
+    """Perform the unique rics operation for this research workflow.
+
+    Args:
+        items: Input to the unique_rics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     values = list(
         dict.fromkeys(clean(x) for x in items)
     )
@@ -94,6 +110,14 @@ def unique_rics(items):
 
 
 def select_rics(args):
+    """Perform the select rics operation for this research workflow.
+
+    Args:
+        args: Input to the select_rics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if args.rics:
         return unique_rics(args.rics), "manual"
 
@@ -229,6 +253,14 @@ def windows(start, end):
 
 
 def flat_columns(df):
+    """Perform the flat columns operation for this research workflow.
+
+    Args:
+        df: Input to the flat_columns operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     df = df.copy()
 
     if isinstance(df.columns, pd.MultiIndex):
@@ -259,6 +291,16 @@ def flat_columns(df):
 
 
 def normalize_history(frame, ric, mode):
+    """Perform the normalize history operation for this research workflow.
+
+    Args:
+        frame: Input to the normalize_history operation.
+        ric: Input to the normalize_history operation.
+        mode: Input to the normalize_history operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if frame is None or frame.empty:
         return pd.DataFrame(columns=COLUMNS)
 
@@ -355,6 +397,18 @@ def normalize_history(frame, ric, mode):
 
 
 def data_path(ric, mode, start, end, folder):
+    """Perform the data path operation for this research workflow.
+
+    Args:
+        ric: Input to the data_path operation.
+        mode: Input to the data_path operation.
+        start: Input to the data_path operation.
+        end: Input to the data_path operation.
+        folder: Input to the data_path operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     safe = re.sub(
         r"[^A-Za-z0-9_.-]",
         "_",
@@ -375,6 +429,18 @@ def data_path(ric, mode, start, end, folder):
 
 
 def validate_cache(df, ric, mode, start, end):
+    """Validate cache against the expected constraints.
+
+    Args:
+        df: Input to the validate_cache operation.
+        ric: Input to the validate_cache operation.
+        mode: Input to the validate_cache operation.
+        start: Input to the validate_cache operation.
+        end: Input to the validate_cache operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not set(COLUMNS).issubset(df.columns):
         return False
 
@@ -410,6 +476,18 @@ def get_window(
     end,
     refresh=False,
 ):
+    """Get window from the current context.
+
+    Args:
+        ric: Input to the get_window operation.
+        mode: Input to the get_window operation.
+        start: Input to the get_window operation.
+        end: Input to the get_window operation.
+        refresh: Input to the get_window operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     cache = data_path(
         ric, mode, start, end, "cache"
     )
@@ -531,6 +609,18 @@ def collect_one(
     end,
     refresh=False,
 ):
+    """Retrieve one from configured sources.
+
+    Args:
+        ric: Input to the collect_one operation.
+        mode: Input to the collect_one operation.
+        start: Input to the collect_one operation.
+        end: Input to the collect_one operation.
+        refresh: Input to the collect_one operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     parts = []
     errors = []
 
@@ -656,6 +746,8 @@ def collect_one(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser()
 
     group = parser.add_mutually_exclusive_group(

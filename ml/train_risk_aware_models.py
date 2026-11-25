@@ -19,13 +19,18 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
-ROOT = Path("data/processed/ml_datasets/aapl_h21")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed/ml_datasets/aapl_h21")
 OUTPUT = ROOT / "risk_aware_benchmarks"
 LAMBDAS = (0.0, 0.5, 1.0, 2.0)
 SEED = 42
 
 
 def load_data():
+    """Load data from stored research artifacts.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     x = pd.read_parquet(ROOT / "features.parquet").reset_index(drop=True)
     y = pd.read_parquet(ROOT / "targets.parquet").reset_index(drop=True)
     meta = pd.read_parquet(ROOT / "metadata.parquet").reset_index(drop=True)
@@ -197,7 +202,20 @@ def load_data():
 
 
 def build_model(name):
+    """Construct model from the supplied inputs.
+
+    Args:
+        name: Input to the build_model operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     def impute():
+        """Perform the impute operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return SimpleImputer(
             strategy="median",
             keep_empty_features=True,
@@ -282,6 +300,16 @@ def build_model(name):
 
 
 def fit_pair(name, x_train, data_train):
+    """Fit pair on the supplied research sample.
+
+    Args:
+        name: Input to the fit_pair operation.
+        x_train: Input to the fit_pair operation.
+        data_train: Input to the fit_pair operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     models = {}
 
     for target in (
@@ -301,6 +329,15 @@ def fit_pair(name, x_train, data_train):
 
 
 def predict_pair(models, x):
+    """Perform the predict pair operation for this research workflow.
+
+    Args:
+        models: Input to the predict_pair operation.
+        x: Input to the predict_pair operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return (
         np.asarray(
             models["Return Benefit"].predict(x),
@@ -319,6 +356,17 @@ def make_policy(
     predicted_protection,
     risk_weight,
 ):
+    """Construct policy from the supplied inputs.
+
+    Args:
+        data: Input to the make_policy operation.
+        predicted_return: Input to the make_policy operation.
+        predicted_protection: Input to the make_policy operation.
+        risk_weight: Input to the make_policy operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if (
         len(data) != len(predicted_return)
         or len(data) != len(predicted_protection)
@@ -437,6 +485,8 @@ def make_policy(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     x, raw = load_data()
 
     years = raw["Decision Date"].dt.year

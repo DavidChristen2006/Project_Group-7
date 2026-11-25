@@ -45,6 +45,17 @@ def _filtered(
     horizon: int,
 ) -> pd.DataFrame:
 
+    """Handle the internal filtered step.
+
+    Args:
+        frame: Input to the _filtered operation.
+        required: Input to the _filtered operation.
+        target: Input to the _filtered operation.
+        horizon: Input to the _filtered operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not isinstance(frame, pd.DataFrame):
         raise ValueError("Expected a DataFrame")
 

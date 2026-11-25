@@ -63,6 +63,12 @@ SPLITS = {
 
 
 def check_keys(data: pd.DataFrame, source: str) -> None:
+    """Validate keys against the expected constraints.
+
+    Args:
+        data: Input to the check_keys operation.
+        source: Input to the check_keys operation.
+    """
     missing = [col for col in KEY if col not in data]
 
     if missing:
@@ -77,6 +83,14 @@ def check_keys(data: pd.DataFrame, source: str) -> None:
 
 
 def bool_column(series: pd.Series) -> pd.Series:
+    """Perform the bool column operation for this research workflow.
+
+    Args:
+        series: Input to the bool_column operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     values = series.astype("string").str.strip().str.lower()
 
     result = values.map({
@@ -93,6 +107,14 @@ def bool_column(series: pd.Series) -> pd.Series:
 
 
 def get_dataset(project: Path) -> pd.DataFrame:
+    """Get dataset from the current context.
+
+    Args:
+        project: Input to the get_dataset operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     features_file = (
         project
         / "data/processed/research_features/equity_features_v1"
@@ -249,6 +271,14 @@ def split_data(
     panel: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
+    """Perform the split data operation for this research workflow.
+
+    Args:
+        panel: Input to the split_data operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     d = panel["Decision Date"]
 
     train = panel.loc[
@@ -340,6 +370,11 @@ def split_data(
 
 
 def make_models() -> dict:
+    """Construct models from the supplied inputs.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return {
         "train_median": DummyRegressor(
             strategy="median"
@@ -391,6 +426,15 @@ def admissible_prediction(
     target: str,
 ) -> np.ndarray:
 
+    """Perform the admissible prediction operation for this research workflow.
+
+    Args:
+        pred: Input to the admissible_prediction operation.
+        target: Input to the admissible_prediction operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     pred = np.asarray(
         pred,
         dtype=float,
@@ -407,6 +451,15 @@ def evaluate(
     predicted: np.ndarray,
 ) -> dict:
 
+    """Perform the evaluate operation for this research workflow.
+
+    Args:
+        actual: Input to the evaluate operation.
+        predicted: Input to the evaluate operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return {
         "MAE": float(
             mean_absolute_error(actual, predicted)
@@ -423,6 +476,8 @@ def evaluate(
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

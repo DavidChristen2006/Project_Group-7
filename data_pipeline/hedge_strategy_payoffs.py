@@ -37,6 +37,8 @@ RIC_ALIASES = {
 
 @dataclass(frozen=True)
 class HedgeInputs:
+    """Represent HedgeInputs within the hedge research workflow.
+    """
     ric: str
     as_of: date
     expiry: date
@@ -51,6 +53,8 @@ class HedgeInputs:
     fee_per_contract: float = 0.0
 
     def __post_init__(self) -> None:
+        """Handle the internal post init step.
+        """
         if self.source not in {
             "illustrative",
             "historical_snapshot",
@@ -118,14 +122,29 @@ class HedgeInputs:
 
     @property
     def contracts(self) -> int:
+        """Perform the contracts operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return self.shares // self.multiplier
 
     @property
     def covered_shares(self) -> int:
+        """Perform the covered shares operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return self.contracts * self.multiplier
 
     @property
     def uncovered_shares(self) -> int:
+        """Perform the uncovered shares operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return self.shares - self.covered_shares
 
 
@@ -322,6 +341,11 @@ def load_historical_forecast(
 
 
 def get_arguments() -> argparse.Namespace:
+    """Get arguments from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )
@@ -404,6 +428,8 @@ def get_arguments() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     args = get_arguments()
 
     if args.demo:
@@ -605,7 +631,7 @@ def main() -> None:
 
     print(
         "\nExpiration P&L scenarios "
-        "(same currency as input quotes):"
+        "(native quote currency; no FX conversion):"
     )
 
     print(

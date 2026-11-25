@@ -1,5 +1,5 @@
 
-"""One-click historical basis calibration for the simple hedge overview.
+"""Shared historical basis calibration for the hedge overview.
 
 Reuses the existing LSEG adjusted-close retrieval and
 horizon-matched historical basis calibration.
@@ -149,10 +149,20 @@ def fetch_quick_calibration(
     *,
     lookback_years: int = 8,
 ) -> dict:
-    """Fetch historical prices on an explicit user action.
+    """Retrieve paired prices and build a reusable historical calibration.
 
-    Uses the default LSEG Platform Session.
-    Always closes the session after the requests.
+    Args:
+        hedge_result: Validated stock snapshot with date and position.
+        cross_result: Matching ETF analysis containing beta and R-squared.
+        lookback_years: Number of years of daily adjusted-close history.
+
+    Returns:
+        A cache with calibration metrics, horizon windows, paired prices
+        and a deterministic research-identity key.
+
+    Notes:
+        Called automatically by the one-button calculator; no trading
+        action is placed. Uses and closes the default LSEG Platform Session.
     """
 
     import lseg.data as ld

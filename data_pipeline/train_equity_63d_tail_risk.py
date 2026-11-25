@@ -83,6 +83,14 @@ def verify_frozen_split(
         )
 
     def sorted_keys(frame):
+        """Perform the sorted keys operation for this research workflow.
+
+        Args:
+            frame: Input to the sorted_keys operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return frame.sort_values(
             KEY
         ).reset_index(drop=True)
@@ -96,6 +104,11 @@ def verify_frozen_split(
 
 
 def make_models() -> dict[str, object]:
+    """Construct models from the supplied inputs.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return {
         "train_prevalence": DummyClassifier(
             strategy="prior"
@@ -146,6 +159,15 @@ def probabilities(
     x: pd.DataFrame,
 ) -> np.ndarray:
 
+    """Perform the probabilities operation for this research workflow.
+
+    Args:
+        model: Input to the probabilities operation.
+        x: Input to the probabilities operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     classes = list(model.classes_)
 
     if classes != [0, 1]:
@@ -174,6 +196,15 @@ def probability_metrics(
     probs: np.ndarray,
 ) -> dict:
 
+    """Perform the probability metrics operation for this research workflow.
+
+    Args:
+        y: Input to the probability_metrics operation.
+        probs: Input to the probability_metrics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not np.isin(y, [0, 1]).all():
         raise ValueError("Labels must be binary")
 
@@ -206,6 +237,16 @@ def alert_metrics(
     cutoff: float,
 ) -> dict:
 
+    """Perform the alert metrics operation for this research workflow.
+
+    Args:
+        y: Input to the alert_metrics operation.
+        probs: Input to the alert_metrics operation.
+        cutoff: Input to the alert_metrics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     alerted = probs >= cutoff
 
     tp = int(
@@ -338,6 +379,8 @@ def choose_validation_threshold(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+    """
     panel = get_dataset(ROOT)
 
     train, validation, test = split_data(

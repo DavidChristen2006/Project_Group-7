@@ -396,6 +396,8 @@ def validate_data(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+    """
     panel = get_dataset(ROOT)
 
     train, val, test = split_data(

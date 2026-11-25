@@ -1,16 +1,12 @@
-"""Calculate option analytics using the Black-Scholers-Merton Model 
+"""analytics/options_math.py: hedge research implementation.
 
-Input: 
-Option type and price, stock price, strike, time to expiry, risk-free rate, and dividend yield 
-
-Output: 
-Implied volatility and the (Greeks) delta, gamma, theta and vega 
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
 """
 
 from vollib.black_scholes_merton.implied_volatility import implied_volatility
 
 from vollib.black_scholes_merton.greeks.analytical import delta, gamma, theta, vega
-
 
 def calculate_option_analytics(
     option_type,
@@ -20,15 +16,25 @@ def calculate_option_analytics(
     time_to_expiry,
     risk_free_rate,
     dividend_yield):
-    """Estimate implied volatility and calculate Greeks for a call or put option
 
-    Input:
-    "Call" or "Put", option and stock prices, strike, expiry in years, and annual risk-free rate and dividend yield as decimals 
+    """Calculate Black–Scholes–Merton implied volatility and option Greeks.
 
-    Output:
-    Dictionary containing implied volatility, delta, gamma, theta and vega
+    Args:
+        option_type: `Call` or `Put` (case-sensitive).
+        option_price: Observed option premium in the underlying quote currency.
+        stock_price: Positive underlying reference price.
+        strike: Contract strike in the same currency as the stock price.
+        time_to_expiry: Positive calendar year fraction until expiration.
+        risk_free_rate: Continuously compounded annual risk-free rate.
+        dividend_yield: Continuously compounded annual dividend yield.
+
+    Returns:
+        Mapping with implied volatility, delta, gamma, theta and vega.
+
+    Notes:
+        A Black–Scholes–Merton approximation is not a contract-level execution
+        quote. Pay attention to the Greek units used by py_vollib.
     """
-
     if option_type == "Call":
         flag = "c"
     elif option_type == "Put":

@@ -40,6 +40,14 @@ class TickerLookupError(ValueError):
 
 
 def _is_true(value) -> bool:
+    """Handle the internal is true step.
+
+    Args:
+        value: Input to the _is_true operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return str(value).strip().lower() in {
         "true",
         "1",
@@ -382,6 +390,8 @@ def resolve_lseg_ric(
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

@@ -18,6 +18,8 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class PriceReference:
+    """Represent PriceReference within the hedge research workflow.
+    """
     value: float
     source: str
     price_date: date | None

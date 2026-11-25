@@ -1,9 +1,24 @@
+"""lseg_api/option_history.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 import pandas as pd
 import lseg.data as ld
 import time
 
 
 def get_latest_option_quote(option_ric, count=10):
+    """Get latest option quote from the current context.
+
+    Args:
+        option_ric: Input to the get_latest_option_quote operation.
+        count: Input to the get_latest_option_quote operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     history_df = ld.get_history(
         universe=option_ric,
         fields=["BID", "ASK"],
@@ -57,6 +72,17 @@ def fill_historical_option_quotes(
     count=5,
     max_age_days=7
 ):
+    """Perform the fill historical option quotes operation for this research workflow.
+
+    Args:
+        options: Input to the fill_historical_option_quotes operation.
+        batch_size: Input to the fill_historical_option_quotes operation.
+        count: Input to the fill_historical_option_quotes operation.
+        max_age_days: Input to the fill_historical_option_quotes operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     result = options.copy()
 
     if result.empty:

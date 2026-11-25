@@ -25,7 +25,7 @@ import lseg.data as ld
 import pandas as pd
 
 
-ROOT = Path("data/processed")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed")
 SOURCE = ROOT / "historical_universe"
 OUTPUT = ROOT / "ever_member_universe"
 
@@ -42,6 +42,14 @@ CURRENT_CHAIN = "0#.SPX"
 
 
 def clean_ric(value):
+    """Perform the clean ric operation for this research workflow.
+
+    Args:
+        value: Input to the clean_ric operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if pd.isna(value):
         return None
 
@@ -59,6 +67,11 @@ def clean_ric(value):
 
 
 def get_current_members():
+    """Get current members from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- CURRENT S&P 500 MEMBERS ---")
 
     ld.open_session()
@@ -100,6 +113,11 @@ def get_current_members():
 
 
 def get_historical_event_rics():
+    """Get historical event rics from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- HISTORICAL MEMBERSHIP EVENTS ---")
 
     path = (
@@ -148,6 +166,11 @@ def get_historical_event_rics():
 
 
 def get_reconstructed_rics():
+    """Get reconstructed rics from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- RECONSTRUCTED HISTORICAL MEMBERS ---")
 
     path = (
@@ -177,6 +200,11 @@ def get_reconstructed_rics():
 
 
 def get_monthly_decision_dates():
+    """Get monthly decision dates from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- FULL RESEARCH CALENDAR ---")
 
     prices = pd.read_parquet(PRICE_FILE)
@@ -251,6 +279,16 @@ def build_master_instruments(
     event_rics,
     reconstructed,
 ):
+    """Construct master instruments from the supplied inputs.
+
+    Args:
+        current: Input to the build_master_instruments operation.
+        event_rics: Input to the build_master_instruments operation.
+        reconstructed: Input to the build_master_instruments operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- EVER-MEMBER INSTRUMENT UNIVERSE ---")
 
     # A RIC is included if it appears in any source.
@@ -336,6 +374,15 @@ def build_collection_grid(
     master,
     decision_dates,
 ):
+    """Construct collection grid from the supplied inputs.
+
+    Args:
+        master: Input to the build_collection_grid operation.
+        decision_dates: Input to the build_collection_grid operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- FULL-PERIOD COLLECTION GRID ---")
 
     # Every security is requested for every month.
@@ -372,6 +419,8 @@ def build_collection_grid(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     print("\n--- RESEARCH CONFIGURATION ---")
 
     print("Index:", INDEX_RIC)

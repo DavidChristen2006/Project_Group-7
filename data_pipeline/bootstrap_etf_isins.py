@@ -19,7 +19,7 @@ from data_pipeline.verify_etf_rics import (
 )
 
 
-ROOT = Path("data/processed/etf_universe")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed/etf_universe")
 SOURCE = ROOT / "etf_instruments.parquet"
 OUTPUT = ROOT / "isin_bootstrap"
 
@@ -195,6 +195,8 @@ def isin_lookup(rics):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     original = pd.read_parquet(SOURCE).copy()
 
     required = [

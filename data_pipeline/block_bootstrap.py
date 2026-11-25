@@ -37,6 +37,15 @@ def prepare_paired_daily_returns(
         name: str,
     ) -> pd.Series:
 
+        """Perform the normalize operation for this research workflow.
+
+        Args:
+            prices: Input to the normalize operation.
+            name: Input to the normalize operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         if not isinstance(prices, pd.Series) or prices.empty:
             raise ValueError(
                 f"Missing {name} price series"
@@ -595,7 +604,18 @@ def render_block_bootstrap(
     hedge_result: dict,
     cross_result: dict | None,
 ) -> None:
-    """Reuse the daily LSEG prices cached by historical calibration."""
+    """Automatically run and cache the historical paired-block simulation.
+
+    Args:
+        hedge_result: Current validated stock snapshot.
+        cross_result: ETF cross-hedge result for the same snapshot, if any.
+
+    Notes:
+        Simulations run automatically when calibrated paired daily prices
+        are available. Their input identity caches both results and failures
+        so changing display-only controls does not repeat past calculations.
+        Samples are synthetic and not independent historical holdouts.
+    """
 
     import streamlit as st
 
@@ -638,9 +658,9 @@ def render_block_bootstrap(
         }.issubset(saved)
     ):
         st.info(
-            "Click 'Calibrate from LSEG adjusted daily "
-            "closes' above again to cache the daily "
-            "prices needed for bootstrap."
+            "Paired historical closes are not cached. "
+            "Calculate the hedge using an ETF with a valid historical "
+            "beta before running the bootstrap."
         )
 
         return
@@ -829,12 +849,13 @@ def render_block_bootstrap(
         return
 
     # -----------------------------------------------------
-    # RUN ON REQUEST, THEN CACHE ONLY FOR IDENTICAL INPUTS
+    # COMPUTE AUTOMATICALLY, THEN CACHE FOR IDENTICAL INPUTS
     # -----------------------------------------------------
 
-    if st.button(
-        "Run paired moving-block bootstrap",
-        key="joint_bootstrap_run",
+    saved_outcome = st.session_state.get("joint_bootstrap_result")
+    if (
+        not isinstance(saved_outcome, dict)
+        or saved_outcome.get("identity") != identity
     ):
 
         try:
@@ -893,15 +914,11 @@ def render_block_bootstrap(
             ImportError,
         ) as exc:
 
-            st.session_state.pop(
-                "joint_bootstrap_result",
-                None,
-            )
-
-            st.error(
-                f"Bootstrap unavailable: {exc}"
-            )
-
+            st.session_state["joint_bootstrap_result"] = {
+                "identity": identity,
+                "error": str(exc),
+            }
+            st.error(f"Bootstrap unavailable: {exc}")
             return
 
     outcome = st.session_state.get(
@@ -914,10 +931,14 @@ def render_block_bootstrap(
     ):
 
         st.info(
-            "Run the bootstrap to evaluate "
-            "the current inputs."
+            "The bootstrap is prepared automatically once the "
+            "paired historical data are available."
         )
 
+        return
+
+    if "error" in outcome:
+        st.warning(f"Bootstrap unavailable: {outcome['error']}")
         return
 
     ranking = outcome["ranking"]

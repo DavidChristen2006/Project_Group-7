@@ -23,6 +23,15 @@ ANNUALIZATION = 252
 
 
 def parse_bool(values: pd.Series, name: str) -> pd.Series:
+    """Perform the parse bool operation for this research workflow.
+
+    Args:
+        values: Input to the parse_bool operation.
+        name: Input to the parse_bool operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     parsed = (
         values.astype("string")
         .str.strip()
@@ -35,6 +44,14 @@ def parse_bool(values: pd.Series, name: str) -> pd.Series:
 
 
 def load_membership(path: Path) -> pd.DataFrame:
+    """Load membership from stored research artifacts.
+
+    Args:
+        path: Input to the load_membership operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not path.is_file():
         raise FileNotFoundError(f"Membership grid not found: {path}")
 
@@ -86,6 +103,14 @@ def load_membership(path: Path) -> pd.DataFrame:
 
 
 def index_price_files(series_root: Path) -> dict[str, Path]:
+    """Perform the index price files operation for this research workflow.
+
+    Args:
+        series_root: Input to the index_price_files operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not series_root.is_dir():
         raise FileNotFoundError(
             f"Adjusted price root not found: {series_root}"
@@ -120,6 +145,15 @@ def load_prices(
     files_by_hash: dict[str, Path],
 ) -> pd.DataFrame:
 
+    """Load prices from stored research artifacts.
+
+    Args:
+        ric: Input to the load_prices operation.
+        files_by_hash: Input to the load_prices operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     suffix = hashlib.sha256(
         ric.encode("utf-8")
     ).hexdigest()[:8]
@@ -189,6 +223,16 @@ def calculate_window(
     horizon: int,
 ) -> dict[str, float]:
 
+    """Calculate window using the available data.
+
+    Args:
+        prices: Input to the calculate_window operation.
+        benchmark: Input to the calculate_window operation.
+        horizon: Input to the calculate_window operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     returns = prices[1:] / prices[:-1] - 1.0
 
     benchmark_returns = (
@@ -275,6 +319,15 @@ def build_panel(
     files_by_hash: dict[str, Path],
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
+    """Construct panel from the supplied inputs.
+
+    Args:
+        members: Input to the build_panel operation.
+        files_by_hash: Input to the build_panel operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     spy = load_prices(
         BENCHMARK_RIC,
         files_by_hash,
@@ -597,6 +650,8 @@ def build_panel(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

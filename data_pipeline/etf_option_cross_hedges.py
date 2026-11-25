@@ -22,6 +22,8 @@ from data_pipeline.horizon_option_selection import (
 
 @dataclass(frozen=True)
 class OptionLeg:
+    """Represent OptionLeg within the hedge research workflow.
+    """
     ric: str
     right: str
     side: int
@@ -32,11 +34,15 @@ class OptionLeg:
 
 @dataclass(frozen=True)
 class ETFOptionStructure:
+    """Represent ETFOptionStructure within the hedge research workflow.
+    """
     name: str
     legs: tuple[OptionLeg, ...]
     multiplier: int = 100
 
     def __post_init__(self):
+        """Handle the internal post init step.
+        """
         if self.multiplier < 1 or not self.legs:
             raise ValueError("Invalid multiplier or legs")
 
@@ -64,6 +70,17 @@ def normalize_option_quotes(
     max_spread: float,
 ) -> pd.DataFrame:
 
+    """Perform the normalize option quotes operation for this research workflow.
+
+    Args:
+        quotes: Input to the normalize_option_quotes operation.
+        target_date: Input to the normalize_option_quotes operation.
+        max_days_after: Input to the normalize_option_quotes operation.
+        max_spread: Input to the normalize_option_quotes operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     required = {
         "RIC",
         "CallPutOption",
@@ -221,6 +238,18 @@ def select_etf_option_structures(
         min_strike=None,
         max_strike=None,
     ):
+        """Perform the pick operation for this research workflow.
+
+        Args:
+            group: Input to the pick operation.
+            right: Input to the pick operation.
+            target_fraction: Input to the pick operation.
+            min_strike: Input to the pick operation.
+            max_strike: Input to the pick operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         candidates = group.loc[
             group["right"].eq(right)
         ].copy()
@@ -294,6 +323,16 @@ def select_etf_option_structures(
         ).date()
 
         def leg(row, side, right):
+            """Perform the leg operation for this research workflow.
+
+            Args:
+                row: Input to the leg operation.
+                side: Input to the leg operation.
+                right: Input to the leg operation.
+
+            Returns:
+                Computed result or status for the caller.
+            """
             return OptionLeg(
                 ric=str(row["RIC"]),
                 right=right,
