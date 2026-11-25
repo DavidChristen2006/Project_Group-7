@@ -25,6 +25,15 @@ def _valid_return(
     value: object,
     label: str,
 ) -> float:
+    """Handle the internal valid return step.
+
+    Args:
+        value: Input to the _valid_return operation.
+        label: Input to the _valid_return operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
@@ -368,7 +377,7 @@ def render_unified_hedge_choices(
             "only. They exclude later closing costs, "
             "early exercise, margin and financing. "
             "Contract identifiers are available "
-            "in Detailed research."
+            "in the contract tables above or the exported scenario CSV."
         )
 
     # -----------------------------------------------------
@@ -459,5 +468,6 @@ def render_unified_hedge_choices(
             "the selected stock and ETF returns. "
             "They are not forecasts. ETF short carry "
             "and trading costs remain unpriced. "
-            "Figures assume matching quote currencies."
+            "No FX conversion is applied. If stock and ETF currencies "
+            "differ, combined P&L and hedge sizing are not reliable."
         )

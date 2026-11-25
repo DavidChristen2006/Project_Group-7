@@ -22,7 +22,7 @@ import pandas as pd
 
 INDEX_RIC = ".SPX"
 
-ROOT = Path("data/processed")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed")
 AAPL_DATA = ROOT / "ml_datasets/aapl_h21"
 OUTPUT = ROOT / "historical_universe"
 
@@ -31,6 +31,14 @@ MAX_CONSTITUENTS = 550
 
 
 def clean_ric(value):
+    """Perform the clean ric operation for this research workflow.
+
+    Args:
+        value: Input to the clean_ric operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if pd.isna(value):
         return None
 
@@ -45,6 +53,14 @@ def clean_ric(value):
 
 
 def normalized_column(column):
+    """Perform the normalized column operation for this research workflow.
+
+    Args:
+        column: Input to the normalized_column operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return re.sub(
         r"[^a-z0-9]+",
         "",
@@ -53,6 +69,16 @@ def normalized_column(column):
 
 
 def identify_column(frame, candidates, label):
+    """Perform the identify column operation for this research workflow.
+
+    Args:
+        frame: Input to the identify_column operation.
+        candidates: Input to the identify_column operation.
+        label: Input to the identify_column operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     lookup = {
         normalized_column(col): col
         for col in frame.columns
@@ -71,6 +97,11 @@ def identify_column(frame, candidates, label):
 
 
 def get_decision_dates():
+    """Get decision dates from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = AAPL_DATA / "metadata.parquet"
 
     metadata = pd.read_parquet(path)
@@ -103,6 +134,11 @@ def get_decision_dates():
 
 
 def get_current_constituents():
+    """Get current constituents from the current context.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     print("\n--- CURRENT INDEX CONSTITUENTS ---")
 
     response = ld.get_data(
@@ -219,6 +255,14 @@ def get_constituent_changes(start_date, end_date):
 
 
 def normalize_changes(raw_changes):
+    """Perform the normalize changes operation for this research workflow.
+
+    Args:
+        raw_changes: Input to the normalize_changes operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     date_column = identify_column(
         raw_changes,
         [
@@ -555,6 +599,8 @@ def reconstruct_membership(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     dates = get_decision_dates()
 
     print("\n--- RESEARCH CONFIGURATION ---")

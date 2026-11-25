@@ -72,6 +72,15 @@ def load_candidates(
     drawdown_weight: float,
 ) -> pd.DataFrame:
 
+    """Load candidates from stored research artifacts.
+
+    Args:
+        path: Input to the load_candidates operation.
+        drawdown_weight: Input to the load_candidates operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     df = pd.read_parquet(path)
 
     expected = set(
@@ -352,7 +361,20 @@ def load_candidates(
 
 def model_factory(seed: int) -> dict:
 
+    """Perform the model factory operation for this research workflow.
+
+    Args:
+        seed: Input to the model_factory operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     def prep():
+        """Perform the prep operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return ColumnTransformer(
             [
                 (
@@ -529,6 +551,17 @@ def date_choices(
     phase: str,
 ) -> pd.DataFrame:
 
+    """Perform the date choices operation for this research workflow.
+
+    Args:
+        frame: Input to the date_choices operation.
+        predictions: Input to the date_choices operation.
+        model_name: Input to the date_choices operation.
+        phase: Input to the date_choices operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if (
         len(frame) != len(predictions)
         or not np.isfinite(predictions).all()
@@ -620,6 +653,15 @@ def policy_choices(
     phase: str,
 ) -> pd.DataFrame:
 
+    """Perform the policy choices operation for this research workflow.
+
+    Args:
+        frame: Input to the policy_choices operation.
+        phase: Input to the policy_choices operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     rows = []
 
     for key, group in frame.groupby(
@@ -679,6 +721,17 @@ def create_splits(
     test_end: str,
 ):
 
+    """Construct splits from the supplied inputs.
+
+    Args:
+        df: Input to the create_splits operation.
+        validation_start: Input to the create_splits operation.
+        test_start: Input to the create_splits operation.
+        test_end: Input to the create_splits operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     v, t, e = (
         pd.Timestamp(value).normalize()
         for value in (
@@ -749,6 +802,17 @@ def fit_and_forecast(
     phase: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
+    """Fit and forecast on the supplied research sample.
+
+    Args:
+        train: Input to the fit_and_forecast operation.
+        evaluation: Input to the fit_and_forecast operation.
+        seed: Input to the fit_and_forecast operation.
+        phase: Input to the fit_and_forecast operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     forecasts = []
     decisions = [
         policy_choices(evaluation, phase)
@@ -822,6 +886,14 @@ def summarize(
     decisions: pd.DataFrame,
 ) -> pd.DataFrame:
 
+    """Perform the summarize operation for this research workflow.
+
+    Args:
+        decisions: Input to the summarize operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     summary = decisions.groupby(
         ["Phase", "Model"],
         as_index=False,
@@ -861,23 +933,25 @@ def summarize(
 
 def main():
 
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )
 
     parser.add_argument(
         "--dataset",
-        default=(
-            "data/processed/ml_datasets/"
-            "aapl_h21/candidate_dataset.parquet"
+        default=str(
+            Path(__file__).resolve().parent
+            / "data/processed/ml_datasets/aapl_h21/candidate_dataset.parquet"
         ),
     )
 
     parser.add_argument(
         "--output-dir",
-        default=(
-            "data/processed/ml_experiments/"
-            "AAPL_candidate_nine_v1"
+        default=str(
+            Path(__file__).resolve().parent
+            / "data/processed/ml_experiments/AAPL_candidate_nine_v1"
         ),
     )
 

@@ -82,6 +82,11 @@ KEY = [
 
 
 def read_data():
+    """Load data from stored research artifacts.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not DB.is_file():
         raise FileNotFoundError(DB)
 
@@ -287,6 +292,14 @@ def read_data():
 
 
 def chronological_split(data):
+    """Perform the chronological split operation for this research workflow.
+
+    Args:
+        data: Input to the chronological_split operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     dates = sorted(
         data["Decision Date"].unique()
     )
@@ -352,6 +365,11 @@ def chronological_split(data):
 
 
 def models():
+    """Perform the models operation for this research workflow.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     existing = make_models(quick=True)
 
     return {
@@ -362,6 +380,15 @@ def models():
 
 
 def checked_predict(model, x):
+    """Perform the checked predict operation for this research workflow.
+
+    Args:
+        model: Input to the checked_predict operation.
+        x: Input to the checked_predict operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     prediction = np.asarray(
         model.predict(x),
         dtype=float,
@@ -386,6 +413,17 @@ def risk_score(
     scales,
     weights,
 ):
+    """Perform the risk score operation for this research workflow.
+
+    Args:
+        actual: Input to the risk_score operation.
+        predicted: Input to the risk_score operation.
+        scales: Input to the risk_score operation.
+        weights: Input to the risk_score operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     errors = (
         np.abs(actual - predicted)
         / scales
@@ -407,6 +445,19 @@ def score_rows(
     model_name,
     sample,
 ):
+    """Perform the score rows operation for this research workflow.
+
+    Args:
+        actual: Input to the score_rows operation.
+        predicted: Input to the score_rows operation.
+        scales: Input to the score_rows operation.
+        label: Input to the score_rows operation.
+        model_name: Input to the score_rows operation.
+        sample: Input to the score_rows operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     rows = []
 
     for appetite, weights in WEIGHTS.items():
@@ -465,6 +516,8 @@ def score_rows(
 
 
 def train():
+    """Perform the train operation for this research workflow.
+    """
     from sklearn.multioutput import MultiOutputRegressor
 
     data = read_data()
@@ -725,6 +778,14 @@ def train():
 
 @lru_cache(maxsize=12)
 def _saved_model(filename):
+    """Handle the internal saved model step.
+
+    Args:
+        filename: Input to the _saved_model operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return joblib.load(
         OUT / filename
     )
@@ -878,6 +939,15 @@ def forecast(
     snapshot,
     appetite="Balanced",
 ):
+    """Perform the forecast operation for this research workflow.
+
+    Args:
+        snapshot: Input to the forecast operation.
+        appetite: Input to the forecast operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     manifest = json.loads(
         (
             OUT / "manifest.json"
@@ -981,6 +1051,12 @@ def render_stock_risk(
     snapshot,
     appetite="Balanced",
 ):
+    """Display stock risk in the user interface.
+
+    Args:
+        snapshot: Input to the render_stock_risk operation.
+        appetite: Input to the render_stock_risk operation.
+    """
     import streamlit as st
 
     with st.expander(
@@ -1007,10 +1083,10 @@ def render_stock_risk(
             ),
         )
 
-        if st.button(
-            "Load stock-risk forecasts",
-            key="load_broad_risk",
-        ):
+        # Fetch at most once per stock/date/horizon; a previous failure is
+        # cached as well to avoid refetching on every UI widget interaction.
+        cached = st.session_state.get("broad_risk_result")
+        if not cached or cached[0] != cache_key:
             with st.spinner(
                 "Retrieving recent adjusted stock "
                 "and SPY histories..."
@@ -1029,6 +1105,9 @@ def render_stock_risk(
                     )
 
                 except Exception as exc:
+                    st.session_state["broad_risk_result"] = (
+                        cache_key, None,
+                    )
                     st.warning(
                         "Broad-market risk unavailable: "
                         f"{exc}"
@@ -1041,6 +1120,7 @@ def render_stock_risk(
         if (
             not cached
             or cached[0] != cache_key
+            or cached[1] is None
         ):
             return
 
@@ -1097,10 +1177,18 @@ def render_stock_risk(
             "option-hedging effectiveness."
         )
 
-        if st.checkbox(
-            "Compare all nine stock-risk models",
-            value=False,
-        ):
+        # A default comparison makes the broad-market forecasts visible
+        # after their data has been retrieved, without another display toggle.
+        from dashboard_visuals import model_ranking_chart
+        st.plotly_chart(
+            model_ranking_chart(
+                table, metric="Predicted max drawdown (%)",
+                name_col="Model", title="Nine-model predicted stock drawdown",
+            ),
+            use_container_width=True,
+            key="broad_nine_model_drawdown_chart",
+        )
+        with st.expander("Recorded nine-model stock-risk estimates"):
             st.dataframe(
                 table.drop(columns=["Key"]),
                 hide_index=True,
@@ -1109,6 +1197,8 @@ def render_stock_risk(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__,
     )

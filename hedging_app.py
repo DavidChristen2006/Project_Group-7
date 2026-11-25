@@ -120,8 +120,6 @@ from risk_aware_hedge import render_recommendation
 
 from broad_equity_six_horizon import render_stock_risk
 
-from broad_equity_six_horizon import render_stock_risk
-
 
 
 ROOT = Path(__file__).resolve().parent
@@ -155,14 +153,29 @@ class StockOnlyInputs:
 
     @property
     def contracts(self) -> int:
+        """Perform the contracts operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return 0
 
     @property
     def covered_shares(self) -> int:
+        """Perform the covered shares operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return 0
 
     @property
     def uncovered_shares(self) -> int:
+        """Perform the uncovered shares operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return self.shares
 
 
@@ -247,6 +260,15 @@ def trading_sessions_until(
     expiry: date,
 ) -> int:
 
+    """Perform the trading sessions until operation for this research workflow.
+
+    Args:
+        as_of: Input to the trading_sessions_until operation.
+        expiry: Input to the trading_sessions_until operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if expiry <= as_of:
         return 0
 
@@ -677,7 +699,16 @@ def render_payoff_chart(
 def render_direct_options(
     result: dict,
 ) -> None:
+    """Graph a stock position and available direct option hedge payoffs.
 
+    Args:
+        result: Validated stock snapshot including eligible option contracts,
+            expiration information, shares and reference price.
+
+    Notes:
+        Payoffs refer to option expiration. If options are unavailable, the
+        unhedged underlying payoff curve remains visible.
+    """
     inputs = result["inputs"]
     meta = result["meta"]
 
@@ -1148,6 +1179,11 @@ def render_cross_options(
     cross: dict,
 ) -> None:
 
+    """Display cross options in the user interface.
+
+    Args:
+        cross: Input to the render_cross_options operation.
+    """
     selected = cross.get(
         "option_selected"
     )
@@ -1282,7 +1318,19 @@ def render_cross_charts(
     meta: dict,
     cross: dict,
 ) -> None:
+    """Show ETF payoff curves and a joint stock–ETF stress heatmap.
 
+    Args:
+        inputs: Stock position and any validated direct option information.
+        meta: Underlying quote and hedge/option-expiry timing metadata.
+        cross: ETF price, beta, hedge quantities, candidate option structures,
+            and calculated scenarios from ``evaluate_cross_hedge``.
+
+    Notes:
+        Heatmap axes are hypothetical returns, not outcome probabilities.
+        Option structures are valued at their expiration, not necessarily the
+        user's selected target date.
+    """
     st.subheader(
         "ETF Cross-Hedge Payoff Comparison"
     )
@@ -1559,657 +1607,529 @@ def render_cross_charts(
 
 
 # ---------------------------------------------------------
-# MAIN STREAMLIT APPLICATION
+# COMPACT, ONE-ACTION HEDGING DASHBOARD
 # ---------------------------------------------------------
 
-def main() -> None:
-
-    st.set_page_config(
-        page_title="Equity Hedge Explorer",
-        layout="wide",
-    )
-
-    st.title(
-        "Equity Hedge Explorer"
-    )
-
-    st.caption(
-        "Research prototype | LSEG latest-available data | "
-        "No order execution"
-    )
-
-    mode = st.sidebar.radio(
-        "Application mode",
-        [
-            "Live Hedging",
-            "Historical ML Research",
-        ],
-    )
+FX_DISCLAIMER = (
+    "Currency warning: the stock and ETF may be quoted in different "
+    "currencies. The app does not verify currency parity, convert ETF "
+    "prices, premiums or P&L to the stock currency, or model FX moves. "
+    "Cross-currency combined P&L, hedge quantities and strategy rankings "
+    "are illustrative and may be materially wrong. Use a common-currency "
+    "valuation before making a financial decision."
+)
 
 
+RESEARCH_PAGES = {
+    "Overview": "A concise summary of saved stock-risk forecasts and model validation.",
+    "Stock Risk Forecasts": "Historical 63-session loss probabilities, volatility and drawdown.",
+    "Model Comparison": "Validation metrics for saved regression and classification models.",
+    "Experiment Results": "Recorded classification, regression and hedge-candidate experiments.",
+    "Hedging Performance": "Matched-date ML, rule-based and unhedged historical outcomes.",
+    "Decision Quality Audit": "Paired decision regret versus the Historical Mean benchmark.",
+}
 
-    if mode == "Historical ML Research":
 
-        research_page = st.sidebar.radio(
-            "Historical research page",
-            [
-                "Existing research",
-                "Compare saved ML models",
-                "Saved project ML evaluations",
-                "Historical policy benchmarks",
-                "ML decision audit",
-            ],
-            key="historical_research_page",
+def _render_quick_direct_payoff(result: dict) -> None:
+    """Plot the stock's expiration payoff without exposing research controls.
+
+    Args:
+        result: Validated stock snapshot and its eligible direct option quotes.
+
+    Notes:
+        All options are valued at their actual expiry, not necessarily the
+        requested hedge date; chart movement values are hypothetical.
+    """
+    inputs = result["inputs"]
+    meta = result["meta"]
+    st.subheader("Stock protection and expiration payoff")
+
+    if not result["has_direct_options"]:
+        st.warning(meta.get("direct_option_issue", "No eligible stock option found."))
+        x = np.linspace(-100.0, 100.0, 401)
+        curves = pd.DataFrame({
+            "Underlying move (%)": x,
+            "Unhedged stock": inputs.shares * inputs.spot * x / 100.0,
+        })
+    else:
+        # Find the optional lower put for the put-spread comparison; no
+        # additional LSEG request is required because quotes are cached.
+        lower = select_lower_put(
+            result["liquid_options"],
+            long_put_strike=inputs.put_strike,
+            expiry=inputs.expiry,
+            spot=inputs.spot,
+            max_spread_fraction=1.0,
+        )
+        curves = direct_expiration_curves(
+            inputs,
+            upper_pct=100.0,
+            lower_put_strike=(float(lower["StrikePrice"]) if lower is not None else None),
+            lower_put_bid=(float(lower["BID"]) if lower is not None else None),
+        )
+        st.caption(
+            f"Direct option expiry: {inputs.expiry}. "
+            f"Hedge target: {meta['research_target_date']}. "
+            "The two dates can differ."
         )
 
-        if research_page == "Existing research":
-
-            render_historical_ml_view()
-
-        elif research_page == "Compare saved ML models":
-
-            metrics_dir = st.text_input(
-                "Saved ML evaluation directory",
-                value=str(
-                    ROOT
-                    / "data"
-                    / "processed"
-                    / "ml_baselines"
-                    / "equity_63d_suite_v1"
-                    / "full"
-                ),
-            )
-
-            render_ml_comparison(
-                metrics_dir
-            )
-
-        elif research_page == "Saved project ML evaluations":
-
-            render_project_ml_results(
-                ROOT
-            )
-
-        elif research_page == "Historical policy benchmarks":
-
-            render_policy_benchmarks(
-                ROOT
-            )
-
-        elif research_page == "ML decision audit":
-
-            render_ml_decision_audit(
-                ROOT
-            )
-
-        st.stop()
+    st.plotly_chart(
+        payoff_figure(curves, "Underlying move (%)", 100.0),
+        use_container_width=True,
+        key="quick_direct_payoff",
+    )
+    st.caption("Hover over the lines to compare hypothetical expiration P&L.")
 
 
+def _render_quick_etf_payoffs(result: dict, cross: dict) -> None:
+    """Display an ETF comparison and joint heatmap from a saved snapshot.
+
+    Args:
+        result: Underlying position snapshot containing its price and shares.
+        cross: ETF snapshot and already-calculated scenario/option structures.
+
+    Notes:
+        Rerendering either graph makes no network requests. Joint returns
+        are hypothetical, without probabilities or cross-currency conversion.
+    """
+    inputs = result["inputs"]
+    st.subheader("ETF protection scenarios")
     st.caption(
-        "Research prototype | LSEG indicative market data | "
-        "No order execution"
+        f"Comparison ETF: {cross['etf_ric']} · "
+        f"ETF reference price: {cross['etf_spot']:,.2f} · "
+        f"Stock-on-ETF beta: {cross['beta']:.2f}"
+    )
+    if cross.get("option_issue"):
+        st.info(f"ETF options: {cross['option_issue']}")
+
+    # A conditional 20% stock loss is a visual scenario, not a forecast.
+    curves = cross_hedge_expiration_curves(
+        stock_spot=inputs.spot,
+        stock_shares=inputs.shares,
+        stock_move_pct=-20.0,
+        etf_spot=cross["etf_spot"],
+        upper_etf_pct=100.0,
+        hedge_fraction=0.5,
+        share_stresses=cross["all_scenarios"],
+        option_structures=cross["option_structures"],
+        option_stresses=cross["option_scenarios"],
+        fee_per_contract=cross["option_fee_per_contract"],
+    )
+    st.plotly_chart(
+        payoff_figure(curves, "ETF move (%)", 100.0),
+        use_container_width=True,
+        key="quick_etf_payoff",
     )
 
-    
-    st.info(
-        "Experimental hedging research based on six predefined "
-        "horizons (21, 42, 63, 84, 126 and 252 trading sessions). "
-        "Other durations are approximations. Historical option-root "
-        "identity, contract deliverables and expiry-date differences "
-        "may affect the reliability of recommendations."
+    # Preserve the research engine's original joint-stress calculations;
+    # only chart controls and presentation are simplified here.
+    surface = build_joint_payoff_surface(
+        stock_spot=inputs.spot,
+        stock_shares=inputs.shares,
+        etf_spot=cross["etf_spot"],
+        hedge_fraction=0.5,
+        share_stresses=cross["all_scenarios"],
+        option_structures=cross["option_structures"],
+        option_stresses=cross["option_scenarios"],
+        fee_per_contract=cross["option_fee_per_contract"],
+        stock_max_pct=100.0,
+        etf_max_pct=100.0,
     )
-
-
-
-    horizon_mode = st.radio(
-        "Hedge period",
-        [
-            "NYSE trading sessions",
-            "Target end date",
-        ],
-        horizontal=True,
-        key="horizon_mode",
+    strategies = list(surface["payoffs"])
+    default = (
+        strategies.index("Short/long ETF shares")
+        if "Short/long ETF shares" in strategies
+        else 0
     )
-
-    # -----------------------------------------------------
-    # STOCK INPUTS
-    # -----------------------------------------------------
-
-    risk_appetite = st.select_slider(
-        "Risk appetite",
-        options=["Low", "Balanced", "High"],
-        value="Balanced",
-        help=(
-            "Low emphasizes drawdown protection. "
-            "Balanced considers return and protection. "
-            "High emphasizes preserving investment returns."
+    strategy = st.selectbox(
+        "Strategy displayed on the heatmap",
+        options=strategies,
+        index=default,
+        key="quick_heat_strategy",
+    )
+    st.plotly_chart(
+        make_joint_heatmap(
+            surface,
+            strategy,
+            mode="Total P&L",
+            stock_cursor=-20.0,
+            etf_cursor=-10.0,
         ),
-        key="user_risk_appetite",
+        use_container_width=True,
+        key="quick_joint_heatmap",
+    )
+    st.caption(
+        "Fixed 50% ETF hedge shown. The grid represents possible stock/ETF "
+        "changes, not statistical probabilities. ETF options are priced "
+        "at expiration. Currency conversion and FX risk are omitted."
     )
 
-    with st.form(
-        "stock_parameters"
-    ):
 
-        col1, col2, col3 = st.columns(3)
+def _render_quick_historical_risk(result: dict, cross: dict) -> None:
+    """Plot historical stock/ETF tail-risk and risk/return comparisons.
 
-        with col1:
+    Args:
+        result: Validated current stock snapshot.
+        cross: Matching ETF result for the same retrieval timestamp.
 
-            ticker = st.text_input(
-                "Stock ticker or LSEG RIC",
-                value="NVDA",
-            ).strip()
+    Notes:
+        Only previously cached horizon-matched market observations are used.
+        This is a descriptive comparison, not a live prediction or proof of
+        model superiority. No new LSEG calls or user run buttons are needed.
+    """
+    from dashboard_visuals import (
+        strategy_tail_loss_chart,
+        strategy_tradeoff_chart,
+    )
+    from data_pipeline.simple_overview import (
+        AVERAGE,
+        RISK,
+        build_strategy_overview,
+    )
 
-            shares = int(
-                st.number_input(
-                    "Number of shares owned",
-                    min_value=1,
-                    value=1000,
-                    step=1,
-                )
-            )
+    saved = st.session_state.get("empirical_basis_result")
+    if not isinstance(saved, dict):
+        return
 
-        with col2:
+    try:
+        summary, ready = build_strategy_overview(result, cross, saved)
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        st.info(f"Historical comparison cannot be assembled: {exc}")
+        return
+    if not ready:
+        return
 
-            if horizon_mode == "NYSE trading sessions":
-
-                entered_sessions = int(
-                    st.number_input(
-                        "Hedge duration (NYSE sessions)",
-                        min_value=1,
-                        max_value=MAX_HORIZON_SESSIONS,
-                        value=63,
-                        step=1,
-                    )
-                )
-
-                end_date = None
-
-            else:
-
-                now = datetime.now(
-                    NEW_YORK
-                ).date()
-
-                entered_sessions = None
-
-                end_date = st.date_input(
-                    "Requested hedge end date",
-                    value=future_market_days(
-                        now,
-                        63,
-                    )[-1].date(),
-                    min_value=now + timedelta(days=1),
-                    max_value=now + timedelta(
-                        days=365 * 20
-                    ),
-                )
-
-            spread = st.slider(
-                "Maximum option bid/ask spread (%)",
-                min_value=1,
-                max_value=30,
-                value=10,
-            )
-
-        with col3:
-
-            fee = float(
-                st.number_input(
-                    "Opening fee per option contract",
-                    min_value=0.0,
-                    value=0.0,
-                    step=0.5,
-                )
-            )
-
-            # Research default: assume standard US equity/ETF option contracts
-            # represent 100 underlying shares when the multiplier is missing.
-            assume_standard = True
-
-        submit = st.form_submit_button(
-            "Retrieve stock and hedge candidates"
+    st.subheader("Historical downside risk and return")
+    left, right = st.columns(2)
+    with left:
+        st.plotly_chart(
+            strategy_tail_loss_chart(summary, RISK),
+            use_container_width=True,
+            key="quick_historical_tail_chart",
         )
+    with right:
+        st.plotly_chart(
+            strategy_tradeoff_chart(summary, RISK, AVERAGE),
+            use_container_width=True,
+            key="quick_historical_tradeoff_chart",
+        )
+    st.caption(
+        "Descriptive overlapping historical windows, not live forecasts. "
+        "CVaR estimates can be unstable with few independent periods. "
+        "Cross-currency FX conversion and short-ETF costs are excluded."
+    )
 
-    # -----------------------------------------------------
-    # RETRIEVE STOCK
-    # -----------------------------------------------------
 
-    if submit:
+def _auto_calibrate_history(result: dict, cross: dict | None) -> None:
+    """Retrieve shared historical returns once after a successful calculation.
 
+    Args:
+        result: Current stock snapshot.
+        cross: Current ETF analysis, or None if ETF retrieval failed.
+
+    Notes:
+        Requires a measured beta and R-squared. Failure never discards
+        the live snapshot or triggers repeated retrieval during chart changes.
+    """
+    if not cross or not isinstance(cross.get("beta_report"), dict):
+        return
+
+    from data_pipeline.quick_calibration import fetch_quick_calibration
+
+    with st.spinner("Preparing the historical risk comparison..."):
         try:
+            st.session_state["empirical_basis_result"] = (
+                fetch_quick_calibration(result, cross, lookback_years=8)
+            )
+            st.session_state.pop("ui_calibration_warning", None)
+        except Exception as exc:
+            # The historical step is optional. LSEG entitlement and network
+            # errors must not invalidate successful stock/ETF snapshots.
+            st.session_state.pop("empirical_basis_result", None)
+            st.session_state["ui_calibration_warning"] = (
+                f"Historical calibration unavailable: {type(exc).__name__}: {exc}"
+            )
 
-            if not ticker:
-                raise ValueError(
-                    "Enter a stock ticker or full LSEG RIC"
+
+def _render_historical_research() -> None:
+    """Navigate concise historical results or the five audit-grade panels.
+
+    Saved research never retrieves current option quotes, retrains models,
+    or silently treats exploratory tests as a final independent holdout.
+    """
+    page = st.sidebar.selectbox(
+        "Historical research view",
+        options=list(RESEARCH_PAGES),
+        key="historical_research_page_v2",
+    )
+    st.caption(RESEARCH_PAGES[page])
+
+    if page == "Overview":
+        from data_pipeline.historical_research_overview import (
+            render_historical_research_overview,
+        )
+        render_historical_research_overview(ROOT)
+    elif page == "Stock Risk Forecasts":
+        render_historical_ml_view()
+    elif page == "Model Comparison":
+        metrics_dir = (
+            ROOT / "data" / "processed" / "ml_baselines"
+            / "equity_63d_suite_v1" / "full"
+        )
+        render_ml_comparison(metrics_dir)
+    elif page == "Experiment Results":
+        render_project_ml_results(ROOT)
+    elif page == "Hedging Performance":
+        render_policy_benchmarks(ROOT)
+    else:
+        render_ml_decision_audit(ROOT)
+
+
+def main() -> None:
+    """Run an approachable calculator while retaining the advanced research.
+
+    Workflow:
+        1. Navigate between a concise calculator, advanced live research and
+           historical saved experiments.
+        2. Enter a position once and press Calculate: load the stock, eligible
+           direct option hedges and optionally the ETF cross hedge.
+        3. Automatically attempt paired historical calibration if available.
+        4. Reuse the saved results in both views; chart edits do not re-query LSEG.
+
+    Notes:
+        There is no automated execution or currency conversion. Even when
+        the ETF and stock prices are quoted in different currencies, the
+        experimental plots can be shown, but monetary combined results
+        may not be economically interpretable.
+    """
+    st.set_page_config(page_title="Equity Hedge Explorer", layout="wide")
+    st.title("Equity Hedge Explorer")
+    st.caption("LSEG-powered academic research · No order execution")
+
+    page = st.sidebar.radio(
+        "Navigation",
+        ["Hedge Calculator", "Advanced Hedge Research", "Historical ML Research"],
+        key="application_page_v2",
+    )
+    if page == "Historical ML Research":
+        _render_historical_research()
+        return
+
+    advanced = page == "Advanced Hedge Research"
+    st.write(
+        "Enter your position once. The program retrieves available hedges, "
+        "estimates risk and prepares its payoff charts together."
+    )
+
+    # A single form prevents an expensive LSEG call on every keystroke.
+    # Charts outside the form rerender from saved snapshot data automatically.
+    with st.form("calculate_position_v2"):
+        left, middle, right = st.columns(3)
+        with left:
+            ticker = st.text_input(
+                "Stock ticker / LSEG RIC", value="NVDA", key="calc_ticker_v2"
+            ).strip()
+            shares = int(st.number_input(
+                "Shares owned", min_value=1, value=1000, step=1,
+                key="calc_shares_v2",
+            ))
+        with middle:
+            if advanced:
+                horizon_mode = st.radio(
+                    "Hedge duration input",
+                    ["Trading sessions", "End date"], horizontal=True,
+                    key="calc_horizon_mode_v2",
                 )
-
-            ny_date = datetime.now(
-                NEW_YORK
-            ).date()
-
-            if end_date is None:
-                sessions = entered_sessions
-
             else:
-                sessions = sessions_for_end_date(
-                    ny_date,
-                    end_date,
+                horizon_mode = "Trading sessions"
+            if horizon_mode == "Trading sessions":
+                sessions = int(st.number_input(
+                    "Hedge duration (NYSE trading sessions)",
+                    min_value=1, max_value=MAX_HORIZON_SESSIONS,
+                    value=63, step=1, key="calc_sessions_v2",
+                ))
+                end_date = None
+            else:
+                now = datetime.now(NEW_YORK).date()
+                end_date = st.date_input(
+                    "Requested end date",
+                    value=future_market_days(now, 63)[-1].date(),
+                    min_value=now + timedelta(days=1),
+                    max_value=now + timedelta(days=365 * 20),
+                    key="calc_end_date_v2",
                 )
+                sessions = None
+        with right:
+            etf = st.text_input(
+                "Comparison ETF (optional)", value="SPY", key="calc_etf_v2"
+            ).strip()
+            risk_appetite = st.select_slider(
+                "Risk appetite", options=["Low", "Balanced", "High"],
+                value="Balanced", key="calc_risk_v2",
+            )
 
-            with st.spinner(
-                "Retrieving LSEG stock and options data..."
-            ):
+        # Research-only controls are not present on the main calculator.
+        if advanced:
+            with st.expander("Market-data and calculation settings"):
+                settings_a, settings_b = st.columns(2)
+                with settings_a:
+                    spread = st.slider(
+                        "Maximum option bid/ask spread (%)",
+                        min_value=1, max_value=30, value=10,
+                        key="calc_spread_v2",
+                    )
+                    fee = float(st.number_input(
+                        "Opening fee per option contract", min_value=0.0,
+                        value=0.0, step=0.5, key="calc_fee_v2",
+                    ))
+                with settings_b:
+                    beta_mode = st.radio(
+                        "ETF beta estimation",
+                        ["Automatic — 252 sessions", "Manual beta assumption"],
+                        key="calc_beta_mode_v2",
+                    )
+                    beta = float(st.number_input(
+                        "Manual stock-to-ETF beta", min_value=-5.0,
+                        max_value=5.0, value=1.0, step=0.1,
+                        disabled=beta_mode != "Manual beta assumption",
+                        key="calc_beta_v2",
+                    ))
+                    include_options = st.checkbox(
+                        "Include ETF option cross hedges", value=True,
+                        key="calc_etf_options_v2",
+                    )
+        else:
+            spread, fee = 10, 0.0
+            beta_mode, beta, include_options = "Automatic — 252 sessions", 1.0, True
 
-                snapshot = get_snapshot(
+        calculate = st.form_submit_button("Calculate hedge", type="primary")
+
+    if calculate:
+        # Save the complete result only after stock retrieval succeeds;
+        # a failed ETF lookup must not erase an otherwise usable stock hedge.
+        st.session_state.pop("ui_etf_warning", None)
+        st.session_state.pop("ui_calibration_warning", None)
+        st.session_state.pop("etf_cross_result", None)
+        st.session_state.pop("empirical_basis_result", None)
+        st.session_state.pop("hedge_result", None)
+        try:
+            if not ticker:
+                raise ValueError("Enter a stock ticker or full LSEG RIC.")
+            now = datetime.now(NEW_YORK).date()
+            requested_sessions = (
+                sessions if end_date is None else sessions_for_end_date(now, end_date)
+            )
+            with st.spinner("Retrieving stock and direct option hedges..."):
+                result = get_snapshot(
                     ric=resolve_lseg_ric(ticker),
                     shares=shares,
-                    sessions=sessions,
+                    sessions=requested_sessions,
                     spread=spread / 100.0,
                     fee=fee,
-                    assume_standard_contracts=(
-                        assume_standard
-                    ),
+                    assume_standard_contracts=True,
                 )
-
-            snapshot["meta"].update({
+            result["meta"].update({
                 "user_ticker": ticker.upper(),
                 "horizon_input_type": horizon_mode,
-                "requested_end_date": (
-                    end_date.isoformat()
-                    if end_date
-                    else None
-                ),
+                "requested_end_date": end_date.isoformat() if end_date else None,
             })
-
-            st.session_state.pop(
-                "etf_cross_result",
-                None,
-            )
-
-            st.session_state[
-                "hedge_result"
-            ] = snapshot
-
+            st.session_state["hedge_result"] = result
         except Exception as exc:
-
-            st.session_state.pop(
-                "hedge_result",
-                None,
+            st.error(
+                "Unable to calculate the stock hedge. Check the ticker, "
+                f"LSEG session and entitlements. {type(exc).__name__}: {exc}"
             )
+            return
 
-            st.session_state.pop(
-                "etf_cross_result",
-                None,
-            )
+        if etf:
+            with st.spinner("Retrieving ETF hedges and preparing graphs..."):
+                try:
+                    cross = evaluate_cross_hedge(
+                        result=result,
+                        etf_text=etf,
+                        beta_mode=beta_mode,
+                        manual_beta=beta,
+                        stock_shock=-0.20,
+                        etf_shock=-0.10,
+                        include_options=include_options,
+                    )
+                    st.session_state["etf_cross_result"] = cross
+                    _auto_calibrate_history(result, cross)
+                except Exception as exc:
+                    st.session_state["ui_etf_warning"] = (
+                        f"ETF comparison unavailable: {type(exc).__name__}: {exc}"
+                    )
 
-            st.error("LSEG stock retrieval failed.")
-
-            st.exception(exc)
-
-    result = st.session_state.get(
-        "hedge_result"
-    )
-
+    result = st.session_state.get("hedge_result")
     if result is None:
+        st.info("Choose your stock and press Calculate hedge to see the results.")
         return
 
     inputs = result["inputs"]
     meta = result["meta"]
-
-    st.subheader(
-        f"{meta.get('user_ticker', inputs.ric)} "
-        f"| {inputs.shares:,} shares"
-    )
-
-
-    st.caption(
-        f"LSEG stock RIC: {inputs.ric} | "
-        f"Reference price: {inputs.spot:,.2f} | "
-        f"Source: {meta.get('underlying_price_source', 'unknown')} | "
-        f"Target: {meta['research_target_date']} "
-        f"({meta['research_horizon_sessions']} NYSE sessions)"
-    )
-
-    if meta.get("used_close_fallback"):
-
-        observed_date = (
-            meta.get("underlying_price_date")
-            or "not confirmed"
-        )
-
-        st.warning(
-            "The stock price is a closing-price reference, "
-            "not a confirmed live quote. "
-            f"Observation date: {observed_date}. "
-            "Stock stress tests and ETF-share comparisons "
-            "are illustrative."
-        )
-
-
-    retrieval_time = datetime.fromisoformat(
-        meta["retrieved_at_new_york"]
-    )
-
-    if retrieval_time.weekday() >= 5:
-
-        st.warning(
-            "Stock and options were retrieved over "
-            "a US weekend; quotes may be stale."
-        )
-
-    
-    # The primary result appears immediately after retrieving
-    # the stock position and available hedge candidates.
-
-    render_recommendation(
-        result,
-        risk_appetite,
-    )
-
-    # Broader S&P 500 stock-risk analysis remains optional.
-    render_stock_risk(
-        result,
-        risk_appetite,
-    )
-
-    # Detailed mechanical payoff research follows the recommendation.
-    if (
-        st.session_state.get("friendly_hedge_view")
-        == "Detailed research"
-    ):
-        st.divider()
-        st.subheader("Detailed strategy analysis")
-        render_direct_options(result)
-
-
-    with st.expander(
-        "Stock snapshot and research assumptions"
-    ):
-        st.json(meta)
-
-    # -----------------------------------------------------
-    # ETF CROSS-HEDGE INPUTS
-    # -----------------------------------------------------
+    cross = st.session_state.get("etf_cross_result")
+    if not isinstance(cross, dict) or cross.get("snapshot") != meta.get("retrieved_at_new_york"):
+        cross = None
 
     st.divider()
-
-    st.subheader(
-        "ETF Cross-Hedging Research"
-    )
-
-    with st.form(
-        "cross_hedge_parameters"
-    ):
-
-        etf = st.text_input(
-            "Cross-hedge ETF ticker or full LSEG RIC",
-            value="SPY",
-        ).strip()
-
-        beta_mode = st.radio(
-            "Beta estimation",
-            [
-                "Automatic — 252 sessions",
-                "Manual beta assumption",
-            ],
-        )
-
-        beta = float(
-            st.number_input(
-                "Manual stock-to-ETF beta",
-                min_value=-5.0,
-                max_value=5.0,
-                value=1.0,
-                step=0.1,
-                disabled=(
-                    beta_mode != "Manual beta assumption"
-                ),
-            )
-        )
-
-        same_currency = st.checkbox(
-            "Confirm stock and ETF are quoted "
-            "in the same currency",
-            value=False,
-        )
-
-        first, second = st.columns(2)
-
-        with first:
-
-            stock_shock = st.selectbox(
-                "Stock return scenario",
-                [
-                    -0.30,
-                    -0.20,
-                    -0.10,
-                    0.0,
-                    0.10,
-                    0.20,
-                ],
-                index=1,
-                format_func=lambda x: f"{x:+.0%}",
-            )
-
-        with second:
-
-            etf_shock = st.selectbox(
-                "ETF return scenario",
-                [
-                    -0.20,
-                    -0.10,
-                    0.0,
-                    0.10,
-                    0.20,
-                ],
-                index=1,
-                format_func=lambda x: f"{x:+.0%}",
-            )
-
-        include_options = st.checkbox(
-            "Include ETF option cross hedges",
-            value=True,
-        )
-
-        evaluate = st.form_submit_button(
-            "Evaluate ETF cross hedge"
-        )
-
-    # -----------------------------------------------------
-    # RETRIEVE ETF CROSS HEDGE
-    # -----------------------------------------------------
-
-    if evaluate:
-
-        try:
-
-            if not etf:
-                raise ValueError(
-                    "Enter an ETF ticker or full LSEG RIC"
-                )
-
-            if not same_currency:
-                raise ValueError(
-                    "Confirm that both price quotes "
-                    "use the same currency"
-                )
-
-            with st.spinner(
-                "Retrieving ETF prices, beta and Greeks..."
-            ):
-
-                cross = evaluate_cross_hedge(
-                    result=result,
-                    etf_text=etf,
-                    beta_mode=beta_mode,
-                    manual_beta=beta,
-                    stock_shock=stock_shock,
-                    etf_shock=etf_shock,
-                    include_options=include_options,
-                )
-
-            st.session_state[
-                "etf_cross_result"
-            ] = cross
-
-        except Exception as exc:
-
-            st.session_state.pop(
-                "etf_cross_result",
-                None,
-            )
-
-            st.error(
-                f"ETF cross hedge failed: {exc}"
-            )
-
-
-    cross = st.session_state.get(
-        "etf_cross_result"
-    )
-
-    # No ETF has been evaluated for this stock snapshot.
-    if (
-        cross is None
-        or cross["snapshot"]
-        != meta["retrieved_at_new_york"]
-    ):
-
-        show_details = render_simple_overview(
-            hedge_result=result,
-            cross_result=None,
-        )
-
-        if show_details:
-
-            render_risk_aware_recommendations(
-                hedge_result=result,
-                cross_result=None,
-            )
-
-        return
-
-    # Show the easy-to-understand summary first.
-    # The user can switch to Detailed research.
-    show_detailed_research = render_simple_overview(
-        hedge_result=result,
-        cross_result=cross,
-    )
-
-    if not show_detailed_research:
-        return
-
-
-    st.write(
-        f"ETF: **{cross['etf_ric']}** | "
-        f"Price: **{cross['etf_spot']:,.2f}** | "
-        f"Beta: **{cross['beta']:.3f}**"
-    )
-
-    if cross.get("etf_close_fallback"):
-
-        st.warning(
-            "The ETF price comes from TR.PriceClose, "
-            "not from a confirmed live quote. "
-            f"Observation date: "
-            f"{cross.get('etf_price_date') or 'not confirmed'}."
-        )
-
-    report = cross.get(
-        "beta_report"
-    )
-
-    if report is not None:
-
-        st.caption(
-            f"252-session beta estimate: "
-            f"{report['beta_stock_on_etf']:.3f}; "
-            f"correlation {report['correlation']:.3f}; "
-            f"R² {report['r_squared']:.3f}; "
-            f"{report['aligned_returns']} aligned returns "
-            f"through {report['as_of_session']}."
-        )
-
-        if report["r_squared"] < 0.10:
-
-            st.warning(
-                "Low R² indicates substantial "
-                "potential ETF basis risk."
-            )
-
-    else:
-
-        st.warning(
-            "Beta was manually supplied, "
-            "not empirically validated."
-        )
-
-    if (
-        cross["selected"][
-            "ETF Position Shares (signed)"
-        ] == 0
-    ).all():
-
-        st.info(
-            "ETF hedge-share quantities rounded to zero "
-            "for the available hedge fractions."
-        )
-
-    st.subheader(
-        "ETF share cross-hedge scenarios"
-    )
-
-    st.dataframe(
-        cross["selected"],
-        hide_index=True,
-        use_container_width=True,
-    )
-
+    st.subheader(f"{meta.get('user_ticker', inputs.ric)} · {inputs.shares:,} shares")
+    a, b, c = st.columns(3)
+    a.metric("Reference price", f"{inputs.spot:,.2f}")
+    b.metric("Position value (stock quote currency)", f"{inputs.spot * inputs.shares:,.2f}")
+    c.metric("Hedge horizon", f"{meta['research_horizon_sessions']} sessions")
     st.caption(
-        "Borrowing, margin, financing, dividends, "
-        "currency conversion and trading costs are excluded."
+        f"LSEG stock RIC: {inputs.ric} · Source: "
+        f"{meta.get('underlying_price_source', 'unknown')} · "
+        f"Target: {meta['research_target_date']} · "
+        f"Fetched: {meta['retrieved_at_new_york']}"
     )
+    if meta.get("used_close_fallback"):
+        st.warning("Stock price is a previous close, not a confirmed live quote.")
 
-    st.download_button(
-        "Download ETF share scenario CSV",
-        cross["all_scenarios"].to_csv(
-            index=False
-        ),
-        file_name="etf_cross_hedge_stresses.csv",
-        mime="text/csv",
-    )
+    # The currency issue is a disclosure, never a blocker or checkbox.
+    if cross is not None:
+        st.warning(FX_DISCLAIMER)
+    if st.session_state.get("ui_etf_warning"):
+        st.warning(st.session_state["ui_etf_warning"])
+    if st.session_state.get("ui_calibration_warning"):
+        st.info(st.session_state["ui_calibration_warning"])
 
-    render_cross_options(
-        cross
-    )
+    render_recommendation(result, risk_appetite)
 
-    render_cross_charts(
-        inputs,
-        meta,
-        cross,
-    )
+    if not advanced:
+        # The ordinary calculator has no diagnostic switches or extra
+        # LSEG commands; the graphs are derived from the existing snapshot.
+        _render_quick_direct_payoff(result)
+        if cross:
+            _render_quick_etf_payoffs(result, cross)
+        if cross:
+            _render_quick_historical_risk(result, cross)
+        st.caption(
+            "Research-only outputs: no guaranteed loss floor. Quoted option "
+            "expiries, transaction costs and different-currency ETFs require "
+            "independent verification."
+        )
+        return
 
-    render_historical_basis_calibration(
-        hedge_result=result,
-        cross_result=cross,
-    )
+    # All audit-focused calculations and adjustable charts are kept in the
+    # separate advanced page; they reuse the same stock and ETF snapshots.
+    render_stock_risk(result, risk_appetite)
+    render_direct_options(result)
+    with st.expander("Stock snapshot and research assumptions"):
+        st.json(meta)
 
-    render_observed_joint_comparison(
-        hedge_result=result,
-        cross_result=cross,
-    )
+    if cross is None:
+        st.info("Enter an ETF in the calculator form to compare cross hedges.")
+        render_risk_aware_recommendations(result, None)
+        return
 
-    render_block_bootstrap(
-        hedge_result=result,
-        cross_result=cross,
-    )
-
-    render_risk_aware_recommendations(
-        hedge_result=result,
-        cross_result=cross,
-    )
-
+    render_simple_overview(result, cross)
+    render_cross_options(cross)
+    render_cross_charts(inputs, meta, cross)
+    render_historical_basis_calibration(result, cross)
+    render_observed_joint_comparison(result, cross)
+    render_block_bootstrap(result, cross)
+    render_risk_aware_recommendations(result, cross)
 
 
 if __name__ == "__main__":

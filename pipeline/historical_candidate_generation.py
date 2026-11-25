@@ -1,3 +1,9 @@
+"""pipeline/historical_candidate_generation.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 from datetime import timedelta
 from dataclasses import dataclass
 from itertools import product
@@ -18,6 +24,8 @@ REQUIRED_COLUMNS = {
 
 @dataclass(frozen=True)
 class CandidateConfig:
+    """Represent CandidateConfig within the hedge research workflow.
+    """
     max_spread_pct: float = 0.10
     max_expiry_gap_days: int = 45
 
@@ -27,6 +35,8 @@ class CandidateConfig:
     short_put_range: tuple = (0.65, 0.95)
 
     def __post_init__(self):
+        """Handle the internal post init step.
+        """
         if not 0 < self.max_spread_pct <= 1:
             raise ValueError("Invalid spread limit.")
 
@@ -48,6 +58,17 @@ def prepare_option_quotes(
     hedge_end_date,
     config,
 ):
+    """Perform the prepare option quotes operation for this research workflow.
+
+    Args:
+        options: Input to the prepare_option_quotes operation.
+        spot_price: Input to the prepare_option_quotes operation.
+        hedge_end_date: Input to the prepare_option_quotes operation.
+        config: Input to the prepare_option_quotes operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     missing = REQUIRED_COLUMNS - set(options.columns)
 
     if missing:
@@ -146,6 +167,18 @@ def make_candidate(
 ):
     # Positive Net Premium = debit paid.
     # Buy at ASK and sell at BID.
+    """Construct candidate from the supplied inputs.
+
+    Args:
+        strategy: Input to the make_candidate operation.
+        expiry: Input to the make_candidate operation.
+        long_put: Input to the make_candidate operation.
+        short_call: Input to the make_candidate operation.
+        short_put: Input to the make_candidate operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     debit = float(long_put["ASK"])
 
     if short_call is not None:
@@ -202,6 +235,20 @@ def generate_hedge_candidates(
     option_multiplier=100,
     config=None,
 ):
+    """Perform the generate hedge candidates operation for this research workflow.
+
+    Args:
+        options: Input to the generate_hedge_candidates operation.
+        underlying_ric: Input to the generate_hedge_candidates operation.
+        spot_price: Input to the generate_hedge_candidates operation.
+        hedge_end_date: Input to the generate_hedge_candidates operation.
+        shares: Input to the generate_hedge_candidates operation.
+        option_multiplier: Input to the generate_hedge_candidates operation.
+        config: Input to the generate_hedge_candidates operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if config is None:
         config = CandidateConfig()
 

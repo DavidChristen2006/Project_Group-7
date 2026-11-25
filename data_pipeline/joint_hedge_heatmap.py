@@ -21,6 +21,17 @@ def _position_for_fraction(
     strategy: str | None = None,
 ) -> int:
 
+    """Handle the internal position for fraction step.
+
+    Args:
+        frame: Input to the _position_for_fraction operation.
+        fraction: Input to the _position_for_fraction operation.
+        field: Input to the _position_for_fraction operation.
+        strategy: Input to the _position_for_fraction operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if frame is None or frame.empty:
         raise ValueError(
             f"Missing position data for {field}"

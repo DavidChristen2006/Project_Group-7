@@ -35,6 +35,8 @@ from data_pipeline.risk_aware_recommendations import (
 
 @dataclass(frozen=True)
 class ConsistencyAudit:
+    """Represent ConsistencyAudit within the hedge research workflow.
+    """
     comparison: pd.DataFrame
     period_winners: pd.DataFrame
     phase_winners: pd.DataFrame

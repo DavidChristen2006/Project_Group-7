@@ -76,6 +76,17 @@ def validate_contracts(
     days_after: int = 35,
 ) -> pd.DataFrame:
 
+    """Validate contracts against the expected constraints.
+
+    Args:
+        raw: Input to the validate_contracts operation.
+        target_date: Input to the validate_contracts operation.
+        spot: Input to the validate_contracts operation.
+        days_after: Input to the validate_contracts operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if raw is None or raw.empty:
         return pd.DataFrame(
             columns=list(REQUIRED)

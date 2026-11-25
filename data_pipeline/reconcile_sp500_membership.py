@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 
-ROOT = Path("data/processed")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed")
 
 HISTORY = (
     ROOT / "historical_universe"
@@ -49,6 +49,15 @@ KVUE_EFFECTIVE_DATE = pd.Timestamp("2023-08-25")
 
 
 def parse_dates(frame, column):
+    """Perform the parse dates operation for this research workflow.
+
+    Args:
+        frame: Input to the parse_dates operation.
+        column: Input to the parse_dates operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = frame.copy()
 
     frame[column] = pd.to_datetime(
@@ -65,6 +74,15 @@ def parse_dates(frame, column):
 
 
 def clean_ids(frame, column):
+    """Perform the clean ids operation for this research workflow.
+
+    Args:
+        frame: Input to the clean_ids operation.
+        column: Input to the clean_ids operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame[column] = (
         frame[column]
         .astype("string")
@@ -83,6 +101,8 @@ def clean_ids(frame, column):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     hist = parse_dates(
         pd.read_parquet(HISTORY),
         "Decision Date",

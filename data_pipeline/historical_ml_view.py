@@ -40,6 +40,14 @@ PROBABILITY_COLUMNS = {
 
 
 def read_forecasts(path: Path) -> pd.DataFrame:
+    """Load forecasts from stored research artifacts.
+
+    Args:
+        path: Input to the read_forecasts operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = pd.read_csv(path)
 
     required = {
@@ -111,6 +119,8 @@ def read_forecasts(path: Path) -> pd.DataFrame:
 
 
 def render_historical_ml_view() -> None:
+    """Display historical ml view in the user interface.
+    """
     st.subheader("Historical ML Research")
 
     st.info(

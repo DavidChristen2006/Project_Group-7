@@ -177,6 +177,8 @@ EVENTS = [
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     if not INPUT_FILE.is_file():
         raise FileNotFoundError(INPUT_FILE)
 

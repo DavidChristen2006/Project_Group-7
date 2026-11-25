@@ -17,6 +17,8 @@ import pandas as pd
 
 @dataclass
 class DirectOptionSelection:
+    """Represent DirectOptionSelection within the hedge research workflow.
+    """
     put: pd.Series
     call: pd.Series
     scored_candidates: pd.DataFrame
@@ -82,6 +84,16 @@ def _no_success(
     attempts: list[str],
 ) -> ValueError:
 
+    """Handle the internal no success step.
+
+    Args:
+        kind: Input to the _no_success operation.
+        target_date: Input to the _no_success operation.
+        attempts: Input to the _no_success operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     reasons = " | ".join(
         attempts[-8:]
     )

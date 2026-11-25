@@ -220,6 +220,15 @@ def estimate_beta(
         label: str,
     ) -> int:
 
+        """Perform the validate operation for this research workflow.
+
+        Args:
+            series: Input to the validate operation.
+            label: Input to the validate operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         numeric = pd.to_numeric(
             series,
             errors="coerce",
@@ -502,7 +511,8 @@ def run_live_analysis(
             "Adjustment coverage requires verification.",
             "Dividend and total-return accounting is incomplete.",
             "Spot quotes may differ in time from the beta date.",
-            "Same quote currency is assumed, not verified.",
+            "Quote currencies are not verified and FX conversion is omitted; "+
+            "cross-currency hedge quantities and combined P&L are illustrative.",
             "ETF shorting requires borrowing and margin.",
             "Beta can change in stressed markets.",
         ],
@@ -513,6 +523,8 @@ def run_live_analysis(
 
 def main() -> None:
 
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )
@@ -536,6 +548,7 @@ def main() -> None:
     parser.add_argument(
         "--assume-same-currency",
         action="store_true",
+        help="Deprecated compatibility flag; no currency assumption is enforced.",
     )
 
     args = parser.parse_args()
@@ -553,11 +566,8 @@ def main() -> None:
             "Choose a different ETF RIC"
         )
 
-    if not args.assume_same_currency:
-        parser.error(
-            "Confirm quote-currency assumption "
-            "with --assume-same-currency"
-        )
+    # No same-currency gate: allow cross-currency research while preserving
+    # a conspicuous warning about unconverted joint monetary outcomes.
 
     stats, scenarios = run_live_analysis(
         args.ric,

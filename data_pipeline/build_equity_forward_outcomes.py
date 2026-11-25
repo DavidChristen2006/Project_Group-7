@@ -25,6 +25,15 @@ KEY = ["Decision Date", "Underlying RIC"]
 
 
 def require_boolean(series: pd.Series, name: str) -> pd.Series:
+    """Perform the require boolean operation for this research workflow.
+
+    Args:
+        series: Input to the require_boolean operation.
+        name: Input to the require_boolean operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     values = series.astype("string").str.strip().str.lower()
     parsed = values.map({
         "true": True,
@@ -42,6 +51,15 @@ def require_boolean(series: pd.Series, name: str) -> pd.Series:
 
 
 def price_file(root: Path, ric: str) -> Path:
+    """Perform the price file operation for this research workflow.
+
+    Args:
+        root: Input to the price_file operation.
+        ric: Input to the price_file operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", ric)
     digest = hashlib.sha256(
         ric.encode("utf-8")
@@ -56,6 +74,15 @@ def price_file(root: Path, ric: str) -> Path:
 
 
 def load_close(root: Path, ric: str) -> pd.Series:
+    """Load close from stored research artifacts.
+
+    Args:
+        root: Input to the load_close operation.
+        ric: Input to the load_close operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = price_file(root, ric)
 
     if not path.is_file():
@@ -120,6 +147,14 @@ def load_close(root: Path, ric: str) -> pd.Series:
 
 
 def max_drawdown(prices: np.ndarray) -> float:
+    """Perform the max drawdown operation for this research workflow.
+
+    Args:
+        prices: Input to the max_drawdown operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     running_peak = np.maximum.accumulate(prices)
 
     return float(
@@ -132,6 +167,15 @@ def outcome_values(
     market: np.ndarray,
 ) -> dict:
 
+    """Perform the outcome values operation for this research workflow.
+
+    Args:
+        stock: Input to the outcome_values operation.
+        market: Input to the outcome_values operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     stock_returns = (
         stock[1:] / stock[:-1] - 1.0
     )
@@ -198,6 +242,8 @@ def outcome_values(
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

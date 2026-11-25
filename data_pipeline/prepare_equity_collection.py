@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 
-ROOT = Path("data/processed")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed")
 
 CANDIDATE_FILE = (
     ROOT
@@ -58,6 +58,15 @@ VALID_SOURCES = {
 
 
 def prepare_dates(frame, column):
+    """Perform the prepare dates operation for this research workflow.
+
+    Args:
+        frame: Input to the prepare_dates operation.
+        column: Input to the prepare_dates operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = frame.copy()
 
     frame[column] = pd.to_datetime(
@@ -74,6 +83,15 @@ def prepare_dates(frame, column):
 
 
 def prepare_rics(frame, column):
+    """Perform the prepare rics operation for this research workflow.
+
+    Args:
+        frame: Input to the prepare_rics operation.
+        column: Input to the prepare_rics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = frame.copy()
 
     frame[column] = (
@@ -94,6 +112,8 @@ def prepare_rics(frame, column):
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     candidate = prepare_dates(
         pd.read_parquet(CANDIDATE_FILE),
         "Decision Date",

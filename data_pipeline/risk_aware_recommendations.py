@@ -29,6 +29,8 @@ OBJECTIVES = (
 
 @dataclass(frozen=True)
 class OptionLeg:
+    """Represent OptionLeg within the hedge research workflow.
+    """
     underlying: str
     right: str
     side: int
@@ -40,6 +42,8 @@ class OptionLeg:
 
 @dataclass(frozen=True)
 class Candidate:
+    """Represent Candidate within the hedge research workflow.
+    """
     name: str
     expiry: date | None = None
     etf_shares: int = 0
@@ -51,6 +55,15 @@ def _positive(
     label: str,
 ) -> float:
 
+    """Handle the internal positive step.
+
+    Args:
+        value: Input to the _positive operation.
+        label: Input to the _positive operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     number = float(value)
 
     if not isfinite(number) or number <= 0:
@@ -651,6 +664,14 @@ def build_candidates(
     # Match raw strategy IDs and display labels.
     def normalize(value: object) -> str:
 
+        """Perform the normalize operation for this research workflow.
+
+        Args:
+            value: Input to the normalize operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return "".join(
             char
             for char in str(value).lower()
@@ -1144,8 +1165,9 @@ def render_risk_aware_recommendations(
     st.caption(
         "Hypothetical stress-test ranking, not a "
         "probability forecast or investment instruction. "
-        "Financing, dividends, borrowing, margin and "
-        "early assignment are excluded."
+        "Financing, dividends, borrowing, margin, FX conversion "
+        "and early assignment are excluded. Different-currency "
+        "stock/ETF P&L totals are not economically comparable."
     )
 
     # -----------------------------------------------------
@@ -1489,6 +1511,18 @@ def render_risk_aware_recommendations(
         )
 
         return
+
+    # Show the previously computed objective as a graph; it is a research
+    # measure rather than a promise of hedge performance.
+    from dashboard_visuals import model_ranking_chart
+    st.plotly_chart(
+        model_ranking_chart(
+            ranking, metric="Objective score", name_col="Strategy",
+            title="Risk-aware strategy objective (historical assumptions)",
+        ),
+        use_container_width=True,
+        key="risk_aware_objective_chart",
+    )
 
     st.dataframe(
         ranking.style.format({

@@ -1,3 +1,9 @@
+"""ml/ml_dataset_preparation.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 
 from pathlib import Path
 
@@ -60,6 +66,14 @@ OPTIONAL_LEG_FEATURES = [
 
 
 def load_ml_dataset(dataset_path=None):
+    """Load ml dataset from stored research artifacts.
+
+    Args:
+        dataset_path: Input to the load_ml_dataset operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if dataset_path is None:
         dataset_path = DATA_PATH
 
@@ -187,6 +201,15 @@ def temporal_train_test_split(
     df,
     test_start=TEST_START
 ):
+    """Perform the temporal train test split operation for this research workflow.
+
+    Args:
+        df: Input to the temporal_train_test_split operation.
+        test_start: Input to the temporal_train_test_split operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     cutoff = pd.Timestamp(test_start).normalize()
 
     train = df.loc[

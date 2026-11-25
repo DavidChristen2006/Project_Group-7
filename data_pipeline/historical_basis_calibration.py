@@ -22,6 +22,8 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class BasisCalibration:
+    """Represent BasisCalibration within the hedge research workflow.
+    """
     horizon_sessions: int
     beta_stock_on_etf: float
     r_squared: float
@@ -256,6 +258,15 @@ def calibrate_basis_residuals(
         name: str,
     ) -> pd.Series:
 
+        """Perform the prepare operation for this research workflow.
+
+        Args:
+            series: Input to the prepare operation.
+            name: Input to the prepare operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         values = pd.to_numeric(
             series,
             errors="coerce",

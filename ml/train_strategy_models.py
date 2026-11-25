@@ -1,3 +1,9 @@
+"""ml/train_strategy_models.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 
 from pathlib import Path
 
@@ -16,12 +22,17 @@ from sklearn.metrics import mean_absolute_error
 from xgboost import XGBRegressor
 
 
-ROOT = Path("data/processed/ml_datasets/aapl_h21")
+ROOT = (Path(__file__).resolve().parents[1] / "data/processed/ml_datasets/aapl_h21")
 OUTPUT = ROOT / "model_benchmarks"
 TARGET = "Hedge Improvement"
 
 
 def load_dataset():
+    """Load dataset from stored research artifacts.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     features = pd.read_parquet(ROOT / "features.parquet")
     targets = pd.read_parquet(ROOT / "targets.parquet")
     metadata = pd.read_parquet(ROOT / "metadata.parquet")
@@ -69,7 +80,17 @@ def load_dataset():
 
 
 def make_models():
+    """Construct models from the supplied inputs.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     def linear_steps():
+        """Perform the linear steps operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return [
             ("imputer", SimpleImputer(
                 strategy="median",
@@ -145,6 +166,17 @@ def evaluate_policy(
     metadata,
     dataset,
 ):
+    """Perform the evaluate policy operation for this research workflow.
+
+    Args:
+        predictions: Input to the evaluate_policy operation.
+        indices: Input to the evaluate_policy operation.
+        metadata: Input to the evaluate_policy operation.
+        dataset: Input to the evaluate_policy operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     rows = []
 
     frame = dataset.iloc[indices].copy()
@@ -209,6 +241,8 @@ def evaluate_policy(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     x, y, metadata, dataset = load_dataset()
 
     dates = pd.to_datetime(metadata["Decision Date"])

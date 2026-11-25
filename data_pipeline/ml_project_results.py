@@ -28,6 +28,14 @@ def read_classification_validation(
     project_root: str | Path,
 ) -> pd.DataFrame:
 
+    """Load classification validation from stored research artifacts.
+
+    Args:
+        project_root: Input to the read_classification_validation operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = (
         Path(project_root)
         / "data"
@@ -103,6 +111,14 @@ def read_recorded_classifier_selection(
     project_root: str | Path,
 ) -> pd.DataFrame:
 
+    """Load recorded classifier selection from stored research artifacts.
+
+    Args:
+        project_root: Input to the read_recorded_classifier_selection operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = (
         Path(project_root)
         / "data/processed/ml_baselines"
@@ -130,6 +146,14 @@ def read_exploratory_regression_test(
     project_root: str | Path,
 ) -> pd.DataFrame:
 
+    """Load exploratory regression test from stored research artifacts.
+
+    Args:
+        project_root: Input to the read_exploratory_regression_test operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = (
         Path(project_root)
         / "data/processed/ml_baselines"
@@ -169,6 +193,14 @@ def find_walkforward_runs(
     project_root: str | Path,
 ) -> list[Path]:
 
+    """Perform the find walkforward runs operation for this research workflow.
+
+    Args:
+        project_root: Input to the find_walkforward_runs operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     root = (
         Path(project_root)
         / "data/processed/ml_evaluations"
@@ -189,6 +221,14 @@ def read_walkforward_recommendations(
     run_dir: str | Path,
 ) -> pd.DataFrame:
 
+    """Load walkforward recommendations from stored research artifacts.
+
+    Args:
+        run_dir: Input to the read_walkforward_recommendations operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = (
         Path(run_dir)
         / "walk_forward_recommendations.parquet"
@@ -298,6 +338,14 @@ def find_candidate_validation_tables(
     project_root: str | Path,
 ) -> list[Path]:
 
+    """Perform the find candidate validation tables operation for this research workflow.
+
+    Args:
+        project_root: Input to the find_candidate_validation_tables operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     root = (
         Path(project_root)
         / "data/processed/ml_datasets"
@@ -317,6 +365,14 @@ def read_candidate_validation(
     path: str | Path,
 ) -> pd.DataFrame:
 
+    """Load candidate validation from stored research artifacts.
+
+    Args:
+        path: Input to the read_candidate_validation operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     path = Path(path)
 
     if not path.is_file():
@@ -428,11 +484,18 @@ def render_project_ml_results(
                 )
             )
 
-            st.dataframe(
-                view,
-                hide_index=True,
+            from dashboard_visuals import model_ranking_chart
+
+            st.plotly_chart(
+                model_ranking_chart(
+                    view, metric="Average Precision",
+                    title="Classification validation — average precision",
+                ),
                 use_container_width=True,
+                key="ml_classification_validation_chart",
             )
+            with st.expander("Classification validation data"):
+                st.dataframe(view, hide_index=True, use_container_width=True)
 
             # Show the original model selection
             # recorded by the training experiment.
@@ -561,11 +624,18 @@ def render_project_ml_results(
                 root
             )
 
-            st.dataframe(
-                table,
-                hide_index=True,
+            from dashboard_visuals import model_ranking_chart
+
+            st.plotly_chart(
+                model_ranking_chart(
+                    table, metric="MAE",
+                    title="Exploratory regression MAE (lower is better)",
+                ),
                 use_container_width=True,
+                key="ml_regression_exploratory_chart",
             )
+            with st.expander("Exploratory regression records"):
+                st.dataframe(table, hide_index=True, use_container_width=True)
 
             st.warning(
                 "This test window was recorded as "

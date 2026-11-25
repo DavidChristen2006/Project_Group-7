@@ -507,6 +507,18 @@ def render_ml_decision_audit(
             "Evidence",
         ]
 
+        # A model's paired regret change is an interpretable visual score;
+        # display the same recorded values as the table underneath.
+        from dashboard_visuals import model_ranking_chart
+        st.plotly_chart(
+            model_ranking_chart(
+                summary, metric="Mean regret improvement",
+                title="Matched-date regret improvement vs Historical Mean",
+            ),
+            use_container_width=True,
+            key="ml_decision_regret_chart",
+        )
+
         st.dataframe(
             summary[
                 display_columns

@@ -25,6 +25,14 @@ def _clean_dates(
     frame: pd.DataFrame,
 ) -> pd.Series:
 
+    """Handle the internal clean dates step.
+
+    Args:
+        frame: Input to the _clean_dates operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     dates = pd.to_datetime(
         frame["Decision Date"],
         errors="coerce",
@@ -47,6 +55,15 @@ def _clean_values(
     column: str,
 ) -> pd.Series:
 
+    """Handle the internal clean values step.
+
+    Args:
+        frame: Input to the _clean_values operation.
+        column: Input to the _clean_values operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     values = pd.to_numeric(
         frame[column],
         errors="coerce",
@@ -74,6 +91,18 @@ def _policy_rows(
     scale: float,
 ) -> pd.DataFrame:
 
+    """Handle the internal policy rows step.
+
+    Args:
+        frame: Input to the _policy_rows operation.
+        policy_col: Input to the _policy_rows operation.
+        outcome_col: Input to the _policy_rows operation.
+        prefix: Input to the _policy_rows operation.
+        scale: Input to the _policy_rows operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     columns = [
         "Decision Date",
         "Policy",
@@ -627,6 +656,18 @@ def render_policy_benchmarks(
 
     # Fractional returns are displayed as percentages.
     # Example: -0.0105 -> -1.05%.
+
+    # Plot the matched decision-date policies before showing raw values.
+    # This is a display change only: no new ranking or re-fitting occurs.
+    from dashboard_visuals import model_ranking_chart
+    st.plotly_chart(
+        model_ranking_chart(
+            summary, metric="Mean return improvement", name_col="Policy",
+            title="Matched-date mean return improvement (fraction)",
+        ),
+        use_container_width=True,
+        key="policy_matched_return_chart",
+    )
 
     st.dataframe(
         summary.style.format({

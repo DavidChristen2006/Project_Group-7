@@ -50,6 +50,11 @@ GENERAL_EVENT_FIELDS = [
 
 
 def load_worklist() -> pd.DataFrame:
+    """Load worklist from stored research artifacts.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not WORKLIST_FILE.is_file():
         raise FileNotFoundError(WORKLIST_FILE)
 
@@ -121,6 +126,17 @@ def query_lseg(
     end: str,
 ) -> pd.DataFrame:
 
+    """Perform the query lseg operation for this research workflow.
+
+    Args:
+        ric: Input to the query_lseg operation.
+        family: Input to the query_lseg operation.
+        start: Input to the query_lseg operation.
+        end: Input to the query_lseg operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if family == "CAPITAL_CHANGE":
         return ld.get_data(
             universe=[ric],
@@ -148,6 +164,14 @@ def query_lseg(
 
 
 def safe_filename(ric: str) -> str:
+    """Perform the safe filename operation for this research workflow.
+
+    Args:
+        ric: Input to the safe_filename operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     safe = re.sub(
         r"[^A-Za-z0-9_.-]",
         "_",
@@ -169,6 +193,18 @@ def process_query(
     raw_folder: Path,
 ) -> dict:
 
+    """Perform the process query operation for this research workflow.
+
+    Args:
+        ric: Input to the process_query operation.
+        family: Input to the process_query operation.
+        start: Input to the process_query operation.
+        end: Input to the process_query operation.
+        raw_folder: Input to the process_query operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     summary = {
         "Underlying RIC": ric,
         "Query Family": family,
@@ -305,6 +341,8 @@ def process_query(
 
 
 def main() -> None:
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__
     )

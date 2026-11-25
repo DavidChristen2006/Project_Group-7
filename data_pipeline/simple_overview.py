@@ -31,6 +31,15 @@ AVERAGE = "Average historical scenario P&L"
 
 def _positive(value: object, label: str) -> float:
 
+    """Handle the internal positive step.
+
+    Args:
+        value: Input to the _positive operation.
+        label: Input to the _positive operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     try:
         number = float(value)
 
@@ -431,10 +440,18 @@ def summarize_user_goal(
 def render_simple_overview(
     hedge_result: dict,
     cross_result: dict | None = None,
-) -> bool:
-    """Show a simple hedge comparison with one-click calibration.
+) -> None:
+    """Render a visual-first comparison of available hedge choices.
 
-    Returns True when Detailed research is selected.
+    Args:
+        hedge_result: Retrieved underlying position snapshot.
+        cross_result: Optional matching ETF hedge snapshot; a mismatched
+            retrieval timestamp is rejected rather than silently combined.
+
+    Notes:
+        Displays position metrics, selectable goal and eligible strategies.
+        With matching calibrated historical returns, also plots 95% CVaR tail
+        loss and average historical P&L. Never fabricates missing statistics.
     """
 
     import streamlit as st
@@ -448,20 +465,6 @@ def render_simple_overview(
 
     st.subheader(
         "Your hedge overview"
-    )
-
-    # -----------------------------------------------------
-    # DISPLAY MODE AT THE TOP
-    # -----------------------------------------------------
-
-    view = st.radio(
-        "Display mode",
-        (
-            "Simple overview",
-            "Detailed research",
-        ),
-        horizontal=True,
-        key="friendly_hedge_view",
     )
 
     # -----------------------------------------------------
@@ -737,6 +740,34 @@ def render_simple_overview(
         )
 
         # -------------------------------------------------
+        # VISUAL DASHBOARD (default; no separate detail mode)
+        # -------------------------------------------------
+
+        from dashboard_visuals import (
+            strategy_tail_loss_chart,
+            strategy_tradeoff_chart,
+        )
+
+        left, right = st.columns(2)
+        with left:
+            st.plotly_chart(
+                strategy_tail_loss_chart(table, RISK),
+                use_container_width=True,
+                key="overview_tail_risk_chart",
+            )
+        with right:
+            st.plotly_chart(
+                strategy_tradeoff_chart(table, RISK, AVERAGE),
+                use_container_width=True,
+                key="overview_risk_return_chart",
+            )
+        st.caption(
+            "Charts show observed historical scenarios, not live "
+            "execution outcomes. The return/risk frontier can be "
+            "unstable with sparse observations."
+        )
+
+        # -------------------------------------------------
         # SHORT, READABLE STRATEGY TABLE
         # -------------------------------------------------
 
@@ -805,7 +836,8 @@ def render_simple_overview(
             "(95% CVaR). The historical windows overlap. "
             "Short-ETF borrowing, distributions, financing, "
             "commissions and slippage are excluded. "
-            "Figures assume compatible quote currencies."
+            "Currency parity is unverified: no FX conversion is applied. "
+            "Cross-currency cash P&L and hedge quantities are indicative only."
         )
 
         if (
@@ -843,24 +875,13 @@ def render_simple_overview(
                 "been calculated."
             )
 
-    # -----------------------------------------------------
-    # AVAILABLE HEDGE TYPES IN SIMPLE MODE
-    # -----------------------------------------------------
+    # Always show all supported hedge types and assumptions.
+    from data_pipeline.unified_hedge_choices import (
+        render_unified_hedge_choices,
+    )
 
-    if view == "Simple overview":
-
-        from data_pipeline.unified_hedge_choices import (
-            render_unified_hedge_choices,
-        )
-
-        render_unified_hedge_choices(
-            hedge_result=hedge_result,
-            cross_result=(
-                cross_result
-                if valid_cross
-                else None
-            ),
-        )
-
-    return view == "Detailed research"
+    render_unified_hedge_choices(
+        hedge_result=hedge_result,
+        cross_result=(cross_result if valid_cross else None),
+    )
 

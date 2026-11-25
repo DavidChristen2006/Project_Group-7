@@ -1,3 +1,9 @@
+"""lseg_api/equity.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 import lseg.data as ld
 import pandas as pd
 
@@ -6,6 +12,14 @@ from lseg_api.pricing import get_delayed_streaming_snapshot
 
 
 def get_current_equity_price(ric):
+    """Get current equity price from the current context.
+
+    Args:
+        ric: Input to the get_current_equity_price operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     try:
         data = get_delayed_streaming_snapshot(
             universe=[ric],
@@ -35,6 +49,17 @@ def get_equity_history(
         end_date: str,
         interval: str = "1d"
 ) -> pd.DataFrame:
+    """Get equity history from the current context.
+
+    Args:
+        ric: Input to the get_equity_history operation.
+        start_date: Input to the get_equity_history operation.
+        end_date: Input to the get_equity_history operation.
+        interval: Input to the get_equity_history operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = ld.get_history(
         universe=ric,
         fields=[
@@ -64,6 +89,15 @@ def get_dividend_yield(
     ric,
     lookback_years=2
 ):
+    """Get dividend yield from the current context.
+
+    Args:
+        ric: Input to the get_dividend_yield operation.
+        lookback_years: Input to the get_dividend_yield operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     try:
         data = ld.get_data(
             universe=[ric],
@@ -149,6 +183,14 @@ def get_dividend_yield(
     return 0.0
 
 def get_stock_metadata(ric):
+    """Get stock metadata from the current context.
+
+    Args:
+        ric: Input to the get_stock_metadata operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = ld.get_data(
         universe=[ric],
         fields=[
@@ -178,6 +220,14 @@ def get_stock_metadata(ric):
     )
 
 def get_quote_currency(ric):
+    """Get quote currency from the current context.
+
+    Args:
+        ric: Input to the get_quote_currency operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = ld.get_data(
         universe=[ric],
         fields=[

@@ -44,7 +44,17 @@ KEY = ["Decision Date", "Hedge Horizon Days", "Strategy"]
 
 
 def build_models() -> dict[str, Pipeline]:
+    """Construct models from the supplied inputs.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     def preprocessing():
+        """Perform the preprocessing operation for this research workflow.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return ColumnTransformer([
             ("numeric", Pipeline([
                 ("imputer", SimpleImputer(strategy="median")),
@@ -57,6 +67,14 @@ def build_models() -> dict[str, Pipeline]:
         ], sparse_threshold=0.0)
 
     def model(regressor):
+        """Perform the model operation for this research workflow.
+
+        Args:
+            regressor: Input to the model operation.
+
+        Returns:
+            Computed result or status for the caller.
+        """
         return Pipeline([
             ("preprocessing", preprocessing()),
             ("regression", regressor),
@@ -129,6 +147,15 @@ def validate_dataset(
     drawdown_weight: float = 0.0,
 ) -> pd.DataFrame:
 
+    """Validate dataset against the expected constraints.
+
+    Args:
+        data: Input to the validate_dataset operation.
+        drawdown_weight: Input to the validate_dataset operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     if not np.isfinite(drawdown_weight) or drawdown_weight < 0:
         raise ValueError(
             "drawdown_weight must be finite and nonnegative"
@@ -321,6 +348,16 @@ def chronological_fold(
     *,
     final_test_start,
 ):
+    """Perform the chronological fold operation for this research workflow.
+
+    Args:
+        data: Input to the chronological_fold operation.
+        decision_date: Input to the chronological_fold operation.
+        final_test_start: Input to the chronological_fold operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     date = pd.Timestamp(
         decision_date
     ).normalize()
@@ -354,6 +391,15 @@ def chronological_fold(
 
 
 def mean_benchmark(train, test):
+    """Perform the mean benchmark operation for this research workflow.
+
+    Args:
+        train: Input to the mean_benchmark operation.
+        test: Input to the mean_benchmark operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     groups = [
         "Hedge Horizon Days",
         "Strategy",
@@ -379,6 +425,14 @@ def mean_benchmark(train, test):
 
 
 def score_decisions(predictions):
+    """Perform the score decisions operation for this research workflow.
+
+    Args:
+        predictions: Input to the score_decisions operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     group_keys = [
         "Phase",
         "Decision Date",
@@ -473,6 +527,20 @@ def run_walkforward(
     drawdown_weight=0.0,
     estimators=None,
 ):
+    """Perform the run walkforward operation for this research workflow.
+
+    Args:
+        dataset: Input to the run_walkforward operation.
+        validation_start: Input to the run_walkforward operation.
+        test_start: Input to the run_walkforward operation.
+        test_end: Input to the run_walkforward operation.
+        min_training_dates: Input to the run_walkforward operation.
+        drawdown_weight: Input to the run_walkforward operation.
+        estimators: Input to the run_walkforward operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     frame = validate_dataset(
         dataset,
         drawdown_weight,
@@ -722,6 +790,14 @@ def run_walkforward(
 
 
 def summarize_recommendations(recommendations):
+    """Perform the summarize recommendations operation for this research workflow.
+
+    Args:
+        recommendations: Input to the summarize_recommendations operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     return recommendations.groupby(
         [
             "Phase",
@@ -770,6 +846,14 @@ def summarize_recommendations(recommendations):
 
 
 def summarize_prediction_accuracy(predictions):
+    """Perform the summarize prediction accuracy operation for this research workflow.
+
+    Args:
+        predictions: Input to the summarize_prediction_accuracy operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     forecast = predictions.loc[
         predictions["Prediction Kind"].eq(
             "forecast"
@@ -808,6 +892,15 @@ def choose_on_validation(
     summary,
     min_validation_decisions=10,
 ):
+    """Perform the choose on validation operation for this research workflow.
+
+    Args:
+        summary: Input to the choose_on_validation operation.
+        min_validation_decisions: Input to the choose_on_validation operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     rows = []
 
     validation = summary.loc[
@@ -944,6 +1037,8 @@ def choose_matured_validation(
 
 
 def main():
+    """Run the module entry point and its workflow.
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument(

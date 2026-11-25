@@ -1,3 +1,9 @@
+"""lseg_api/options.py: hedge research implementation.
+
+Functions are documented at their point of definition.
+Historical outputs are research estimates, not executable orders.
+"""
+
 import lseg.data as ld
 import pandas as pd
 
@@ -11,6 +17,17 @@ def get_option_chain(
     maximum_strike=None,
     max_results=2000
 ):
+    """Get option chain from the current context.
+
+    Args:
+        underlying_ric: Input to the get_option_chain operation.
+        minimum_strike: Input to the get_option_chain operation.
+        maximum_strike: Input to the get_option_chain operation.
+        max_results: Input to the get_option_chain operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     filters = [
         "SearchAllCategoryv2 eq 'Options'",
         f"UnderlyingQuoteRIC eq '{underlying_ric}'"
@@ -55,6 +72,17 @@ def select_put_option(
     hedge_horizon_days,
     target_strike_pct=0.90
 ):
+    """Perform the select put option operation for this research workflow.
+
+    Args:
+        options: Input to the select_put_option operation.
+        current_price: Input to the select_put_option operation.
+        hedge_horizon_days: Input to the select_put_option operation.
+        target_strike_pct: Input to the select_put_option operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = options.copy()
 
     data = data[
@@ -243,6 +271,17 @@ def add_option_analytics(
     risk_free_rate,
     dividend_yield
 ):
+    """Perform the add option analytics operation for this research workflow.
+
+    Args:
+        options: Input to the add_option_analytics operation.
+        current_price: Input to the add_option_analytics operation.
+        risk_free_rate: Input to the add_option_analytics operation.
+        dividend_yield: Input to the add_option_analytics operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     results = []
 
     valuation_date = pd.Timestamp.today().normalize()
@@ -326,6 +365,15 @@ def filter_liquid_options(
     options,
     max_spread_pct=0.10
 ):
+    """Perform the filter liquid options operation for this research workflow.
+
+    Args:
+        options: Input to the filter_liquid_options operation.
+        max_spread_pct: Input to the filter_liquid_options operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = options.copy()
 
     data = data[
@@ -364,6 +412,19 @@ def rank_put_options(
     target_strike_pct,
     target_delta,
     selection_mode="balanced"):
+    """Perform the rank put options operation for this research workflow.
+
+    Args:
+        options: Input to the rank_put_options operation.
+        current_price: Input to the rank_put_options operation.
+        hedge_horizon_days: Input to the rank_put_options operation.
+        target_strike_pct: Input to the rank_put_options operation.
+        target_delta: Input to the rank_put_options operation.
+        selection_mode: Input to the rank_put_options operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = options.copy()
 
     data = data[data["CallPutOption"] == "Put"]
@@ -422,6 +483,18 @@ def rank_call_options(
     hedge_horizon_days,
     target_strike_pct=1.10,
     target_delta=0.25):
+    """Perform the rank call options operation for this research workflow.
+
+    Args:
+        options: Input to the rank_call_options operation.
+        current_price: Input to the rank_call_options operation.
+        hedge_horizon_days: Input to the rank_call_options operation.
+        target_strike_pct: Input to the rank_call_options operation.
+        target_delta: Input to the rank_call_options operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = options.copy()
 
     data = data[data["CallPutOption"] == "Call"]
@@ -462,6 +535,19 @@ def rank_call_options_same_expiry(
     target_strike_pct=1.10,
     target_delta=0.25,
     selection_mode="balanced"):
+    """Perform the rank call options same expiry operation for this research workflow.
+
+    Args:
+        options: Input to the rank_call_options_same_expiry operation.
+        current_price: Input to the rank_call_options_same_expiry operation.
+        expiry_date: Input to the rank_call_options_same_expiry operation.
+        target_strike_pct: Input to the rank_call_options_same_expiry operation.
+        target_delta: Input to the rank_call_options_same_expiry operation.
+        selection_mode: Input to the rank_call_options_same_expiry operation.
+
+    Returns:
+        Computed result or status for the caller.
+    """
     data = options.copy()
 
     data = data[data["CallPutOption"] == "Call"]

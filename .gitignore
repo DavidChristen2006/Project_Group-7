@@ -1,17 +1,21 @@
-# Virtual environments (each person creates their own)
-.venv/
-.venv*/
-
-# Python cache files
-__pycache__/
-*.pyc
-
-# macOS / editor files
-.DS_Store
-.vscode/
-
-# LSEG login details: never upload these
+# Credentials and environment
 lseg-data.config.json
-
-# Data: too large for GitHub (some files > 100 MB) and licensed LSEG data
-data/
+.env
+.env.*
+!.env.example
+.venv/
+# LSEG data and generated models are not redistributable
+data/**
+!data/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
+*.joblib
+*.sqlite
+*.db
+*.parquet
+# Python caches and editor files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+.DS_Store
