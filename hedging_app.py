@@ -2133,4 +2133,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    from UI import render_consumer_ui
+
+    render_consumer_ui(sys.modules[__name__])
