@@ -142,7 +142,20 @@ HEDGE_FRACTIONS = (0.25, 0.50, 0.75, 1.0)
 
 @dataclass(frozen=True)
 class StockOnlyInputs:
-    """Stock position without eligible direct option contracts."""
+    """Stock position without eligible direct option contracts.
+
+    Offers the same interface as ``HedgeInputs`` so the rest of the app
+    can run when no direct option hedge was found (e.g. for ETF hedging).
+
+    Attributes:
+        ric: LSEG instrument code of the stock.
+        as_of: Retrieval date (New York time).
+        shares: Number of shares owned.
+        spot: Reference price of the stock.
+        fee_per_contract: Opening fee per option contract (kept for
+            interface compatibility).
+        expiry: Always ``None`` because no option is selected.
+    """
 
     ric: str
     as_of: date
