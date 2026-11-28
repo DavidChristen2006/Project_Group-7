@@ -304,15 +304,14 @@ def trading_sessions_until(
     as_of: date,
     expiry: date,
 ) -> int:
-
-    """Perform the trading sessions until operation for this research workflow.
+    """Count NYSE trading sessions after ``as_of`` up to ``expiry``.
 
     Args:
-        as_of: Input to the trading_sessions_until operation.
-        expiry: Input to the trading_sessions_until operation.
+        as_of: Reference date; not counted.
+        expiry: End date; counted if it is a trading day.
 
     Returns:
-        Computed result or status for the caller.
+        Number of sessions, or 0 if ``expiry`` is not after ``as_of``.
     """
     if expiry <= as_of:
         return 0
