@@ -215,7 +215,7 @@ def future_market_days(
 
     Raises:
         ValueError: If ``count`` is out of range or the NYSE calendar does not
-            cover enough sessions.
+        cover enough sessions.
     """
 
     if not 1 <= count <= MAX_HORIZON_SESSIONS:
@@ -245,7 +245,23 @@ def sessions_for_end_date(
     as_of: date,
     end_date: date,
 ) -> int:
-    """Roll a non-trading end date to the next NYSE session."""
+    """Convert an end date into a number of NYSE trading sessions.
+
+    A date that is not a trading day is rolled forward to the next session.
+
+    Args:
+        as_of: Reference date (today, New York time); not counted.
+        end_date: Requested end date of the hedge.
+
+    Returns:
+        Number of sessions after ``as_of`` up to and including the first
+        session on or after ``end_date``.
+
+    Raises:
+        ValueError: If ``end_date`` is not after ``as_of``, lies more than
+            20 years ahead, has no following NYSE session, or exceeds
+            ``MAX_HORIZON_SESSIONS``.
+    """
 
     if end_date <= as_of:
         raise ValueError(
