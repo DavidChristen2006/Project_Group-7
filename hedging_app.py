@@ -169,7 +169,7 @@ class StockOnlyInputs:
         """Perform the contracts operation for this research workflow.
 
         Returns:
-            Computed result or status for the caller.
+            Computed result or status for the caller. (always 0)
         """
         return 0
 
@@ -178,7 +178,7 @@ class StockOnlyInputs:
         """Perform the covered shares operation for this research workflow.
 
         Returns:
-            Computed result or status for the caller.
+            Computed result or status for the caller. (always 0)
         """
         return 0
 
@@ -187,7 +187,7 @@ class StockOnlyInputs:
         """Perform the uncovered shares operation for this research workflow.
 
         Returns:
-            Computed result or status for the caller.
+            Computed result or status for the caller. (all shares)
         """
         return self.shares
 
