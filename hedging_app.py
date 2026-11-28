@@ -187,7 +187,23 @@ def future_market_days(
     as_of: date,
     count: int,
 ) -> pd.DatetimeIndex:
-    """Get the next count NYSE trading sessions."""
+    """Return the next ``count`` NYSE trading sessions after ``as_of``.
+
+    Weekends and exchange holidays are skipped. ``as_of`` itself is not
+    included.
+
+    Args:
+        as_of: Reference date (typically today, New York time).
+        count: Number of sessions, between 1 and ``MAX_HORIZON_SESSIONS``.
+
+    Returns:
+        Timezone-naive, midnight-normalized ``pd.DatetimeIndex`` of exactly
+        ``count`` ascending session dates. The last entry is the hedge target date.
+
+    Raises:
+        ValueError: If ``count`` is out of range or the NYSE calendar does not
+            cover enough sessions.
+    """
 
     if not 1 <= count <= MAX_HORIZON_SESSIONS:
         raise ValueError(
